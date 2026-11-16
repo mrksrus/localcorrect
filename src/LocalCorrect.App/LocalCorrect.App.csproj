@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>LocalCorrect.App</RootNamespace>
+    <AssemblyName>LocalCorrect</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>LocalCorrect.ico</ApplicationIcon>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\LocalCorrect.Core\LocalCorrect.Core.csproj" />
+    <ProjectReference Include="..\LocalCorrect.Engine\LocalCorrect.Engine.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\..\LICENSE" Link="LICENSE" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\README.md" Link="README.md" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\THIRD_PARTY.md" Link="THIRD_PARTY.md" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\CONTRIBUTING.md" Link="CONTRIBUTING.md" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\licenses\**\*" Link="licenses\%(RecursiveDir)%(Filename)%(Extension)" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

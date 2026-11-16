@@ -1,0 +1,5 @@
+* text=auto
+*.cmd text eol=crlf
+*.lex text eol=lf
+*.ico binary
+*.png binary

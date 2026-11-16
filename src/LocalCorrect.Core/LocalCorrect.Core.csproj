@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>LocalCorrect.Core</RootNamespace>
+    <AssemblyName>LocalCorrect.Core</AssemblyName>
+  </PropertyGroup>
+</Project>

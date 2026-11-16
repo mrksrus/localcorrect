@@ -1,2 +1,104 @@
-# localcorrect
-Offline, system-wide EN/DE text correction for Windows: select text anywhere, press a hotkey, get it corrected by a local model.
+# LocalCorrect
+
+LocalCorrect is a per-user Windows tray app that corrects English and German spelling in whatever program you are typing in. Select text, press a hotkey, and the selection is replaced. Outlook, a browser, and most other text fields all use the same app. Nothing is sent off the machine.
+
+This replaces the separate Outlook add-in and browser extension with one program. It does not install into Outlook.
+
+**Version 0.1.0-alpha.1.** The spelling engine is the same word-list corrector as [LocalCorrect for Firefox](https://github.com/mrksrus/localcorrect-browser) version 2 and [LocalCorrect for Outlook](https://github.com/mrksrus/localcorrect-outlook). It fixes typos. It does not fix grammar, and a real word in the wrong place stays as it is.
+
+## Privacy
+
+The default engine reads word lists that ship inside the program. It does not open a network connection, and it does not have an account or telemetry.
+
+The text you select is not written to the log. The log records only that something happened (for example the outcome, the language, the length, and the program name). The first line of the log is written as the process starts, before settings are loaded, so a startup failure still leaves a trace at `%LOCALAPPDATA%\LocalCorrect\log.txt`.
+
+An optional local-model engine can talk to an [Ollama](https://ollama.com)-compatible server. It is off unless you select it. The address must be `127.0.0.1`, `localhost`, or `::1`. Other addresses are rejected before a request is built. The client does not use a proxy and does not follow redirects. Leave the preview on when you try it, because that model is not the one the tests cover.
+
+## Install
+
+Windows 10 or Windows 11, 64-bit. No administrator account. The published program includes its own .NET runtime.
+
+1. Download `LocalCorrect-0.1.0-alpha.1-win-x64.zip` from the [releases](https://github.com/mrksrus/localcorrect/releases) page and unzip it.
+2. The program is unsigned, so SmartScreen may say it is unrecognized. Choose **More info**, then **Run anyway**.
+3. Double-click `install.cmd`. That copies LocalCorrect to `%LOCALAPPDATA%\LocalCorrect\app` and adds a Start menu shortcut. You can also run `LocalCorrect.exe --install`.
+4. A tray icon appears. Right-click it for settings, pause, the log, and exit.
+
+Running `LocalCorrect.exe` itself, without installing, also works. Install it if you want it to stay put and to start with Windows.
+
+Remove it with `uninstall.cmd` (or `LocalCorrect.exe --uninstall`). That removes the program, the Start menu shortcut, and the sign-in startup entry. Settings in `%APPDATA%\LocalCorrect` are kept.
+
+## Use
+
+Click in the text field first so the caret is there. Select the words you want fixed. Press **Ctrl+Alt+L** (change this in settings).
+
+A small window lists the changes. **Replace** pastes them over the selection. **Cancel** or Esc leaves the text alone. You can turn that preview off.
+
+The previous clipboard contents are put back afterwards, including formats that are not plain text when Windows exposes them as memory (HTML, RTF, PNG, and similar). A bitmap held only as a GDI handle cannot be snapshotted and is skipped.
+
+What it changes, from the same cases as the Firefox version:
+
+- `recieve` → `receive`, `teh` → `the`, `Dnak` → `Dank`
+- `fur` → `für`, `ueber` → `über`, `gross` → `groß`
+- `haus` → `Haus`, `dont` → `don't`, a lone `i` → `I`
+
+What it leaves alone: names, links, e-mail addresses, code, file names, numbers, acronyms, command-line flags, and quoted lines that start with `>`. A word that is valid in the other language stays (`Meeting` in a German sentence). It does not correct a real word used in the wrong place (`there` / `their`). When two fixes are equally likely it picks the more common word.
+
+If nothing is selected, LocalCorrect tells you and does not type anything. It does not correct a whole message on its own.
+
+## Settings
+
+Stored in `%APPDATA%\LocalCorrect\settings.json`. Open them from the tray icon.
+
+| Setting | Default |
+| --- | --- |
+| Hotkey | Ctrl+Alt+L. Ctrl or Alt is required, plus a letter or F1–F12. |
+| Language | Detect automatically, or force English or German. |
+| Engine | Built-in word lists. Or a local Ollama-compatible model on this computer. |
+| Preview | On. Shows the changes and waits for Replace or Cancel. |
+| Exclusions | Process names, one per line (`outlook`, `keepass`). `.exe` is optional. |
+| Start with Windows | Off. Uses the per-user Run key, not an administrator task. |
+| Logging | Off. Errors are still written. The selection is not. |
+
+## How it is built
+
+`LocalCorrect.Engine` corrects text. `SymSpellCorrector` is the built-in engine. `OllamaCorrectionEngine` is the optional loopback engine. Both implement `ICorrectionEngine`, so a later engine (a local llama.cpp server, or LanguageTool running on this computer) can be added without changing the hotkey.
+
+`LocalCorrect.Core` holds settings, the clipboard save/restore session, and the correction workflow. Those are unit-tested without Windows. `LocalCorrect.App` is the tray: a global hotkey, simulated Ctrl+C / Ctrl+V, a preview window, and the per-user installer.
+
+The hotkey copies the selection, the engine returns a new string, and Ctrl+V pastes it. Focus is sent back to the window you were typing in before the paste.
+
+## Build
+
+.NET SDK 8.
+
+```
+dotnet test LocalCorrect.sln -c Release
+dotnet publish src/LocalCorrect.App/LocalCorrect.App.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o publish
+```
+
+GitHub Actions (`.github/workflows/ci.yml`) runs the tests on `windows-latest` and uploads `LocalCorrect-0.1.0-alpha.1-win-x64.zip`.
+
+## Roadmap
+
+- A stronger local model, behind the same `ICorrectionEngine`, once it beats the word lists on the public cases without inventing text.
+- LanguageTool, or another grammar checker, running on localhost only.
+- Richer preview for long selections.
+- A signed installer.
+- macOS and Linux. The engine and the workflow are plain .NET. The missing pieces are a tray, a global hotkey, and a way to read and replace the selection (Accessibility on macOS, AT-SPI on Linux). Not in this version.
+
+## Limitations
+
+- The paste is plain text. Bold, links, and other formatting inside the selection are not kept.
+- Some programs drop the selection when another window opens. The preview tries to put focus back before pasting. If a program clears the selection on focus loss, Replace can insert the text at the caret instead of over the selection. Turn the preview off if that happens, or paste from a program that keeps the selection (Outlook's editor and normal browser fields usually do, if you do not click back into the text first).
+- Editors that draw their own text and do not answer Ctrl+C, such as Google Docs, do not work.
+- A window running as administrator is left alone. The tray icon says so. Running LocalCorrect itself as administrator is not required and is not the setup this installer uses.
+- Password boxes that are standard Windows edit controls are skipped. A browser password field is not always detectable. Do not use the hotkey on a password.
+- Selections longer than 50,000 characters are refused. Words longer than 32 letters are left unchanged.
+- The clipboard is borrowed for a moment. If another program needs it during that moment, that program waits or fails, and LocalCorrect then puts back what was there.
+- This alpha has not been exercised inside a live copy of Outlook 2019. The automated tests cover the engine and the clipboard session, not the Outlook window.
+
+## License
+
+Program: [MIT](LICENSE), copyright Sam Markus Rus.
+
+Word lists: see [THIRD_PARTY.md](THIRD_PARTY.md). Frequency data is CC BY-SA 4.0. German word validity comes from igerman98 (GPL-2.0-or-later). English word validity comes from SCOWL.
