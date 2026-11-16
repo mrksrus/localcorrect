@@ -1,0 +1,10 @@
+bin/
+obj/
+publish/
+dist/
+artifacts/
+.vs/
+*.user
+TestResults/
+*.nupkg
+.dotnet/
