@@ -12,6 +12,8 @@ internal sealed class TrayController : ApplicationContext
     readonly LanguageToolServer _server;
     readonly LanguageToolEngine _languageTool;
     readonly ToolStripMenuItem _status = new() { Enabled = false };
+    readonly ToolStripMenuItem _hotkeyLine = new() { Enabled = false };
+    SettingsForm? _settingsForm;
     readonly SynchronizationContext _ui;
     readonly NotifyIcon _notify;
     readonly HotkeyWindow _hotkeys = new();
@@ -55,7 +57,7 @@ internal sealed class TrayController : ApplicationContext
         {
             Icon = _ownedIcon ?? SystemIcons.Application,
             Visible = true,
-            Text = Tooltip()
+            Text = "LocalCorrect"
         };
         _notify.DoubleClick += (_, _) => OpenSettings();
 
@@ -64,18 +66,20 @@ internal sealed class TrayController : ApplicationContext
         _ui = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
         _server.StateChanged += state => _ui.Post(_ => OnServerState(state), null);
         menu.Items.Add(_status);
+        menu.Items.Add(_hotkeyLine);
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("Settings...", null, (_, _) => OpenSettings());
+        menu.Items.Add("Settings…", null, (_, _) => OpenSettings());
         var pause = new ToolStripMenuItem("Pause") { CheckOnClick = true };
         pause.CheckedChanged += (_, _) =>
         {
             _paused = pause.Checked;
             if (_paused) _hotkeys.Unregister();
             else ApplyHotkey();
-            _notify.Text = Tooltip();
+            ShowStatus();
         };
         menu.Items.Add(pause);
         menu.Items.Add("Open log", null, (_, _) => OpenLog());
+        menu.Items.Add("Licences", null, (_, _) => Ui.OpenLicences());
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Exit", null, (_, _) => Exit());
         _notify.ContextMenuStrip = menu;
@@ -104,10 +108,11 @@ internal sealed class TrayController : ApplicationContext
         {
             var target = ForegroundProbe.Capture();
             _transport.Target = target.Handle;
+            _transport.SelectedParagraph = false;
             if (!KeyboardChord.WaitForRelease(_settings.Hotkey, 1000))
             {
                 FileLog.Write(_logPath, _settings.Logging, "info", "hotkey still held");
-                Balloon("Let go of the hotkey keys, then try again.");
+                Balloon("Let go of the hotkey keys, then press them again.");
                 return;
             }
             var timed = new TimedEngine(_engine);
@@ -123,25 +128,27 @@ internal sealed class TrayController : ApplicationContext
                 Preview = _settings.PreviewBeforeReplace,
                 Language = _settings.Language,
                 ExcludedProcesses = _settings.ExcludedProcesses
-            }, (original, corrected, edits) => PreviewForm.Ask(original, corrected, edits));
+            }, (original, corrected, edits) => PreviewForm.Ask(original, corrected, edits,
+                new PreviewDetails(timed.Last?.Language, timed.Last?.Engine, timed.Last?.Notice, _transport.SelectedParagraph)));
             var category = result.Status is WorkflowStatus.Failed or WorkflowStatus.ClipboardBusy or WorkflowStatus.ClipboardTooLarge ? "error" : "info";
             FileLog.Write(_logPath, _settings.Logging, category,
                 result.Status + " chars=" + result.Characters.ToString() + " edits=" + result.Edits.ToString()
                 + " lang=" + (result.Language ?? "-") + " engine=" + (timed.Last?.Engine ?? _engine.Id)
                 + " ms=" + (timed.Milliseconds?.ToString() ?? "-") + " process=" + ProcessFilter.CoreName(target.ProcessName)
                 + " class=" + target.FocusClass);
-            var notice = timed.Last?.Notice;
+            // The preview already showed the outcome and any notice.
             if (result.Status == WorkflowStatus.PreviewDeclined || (result.Status == WorkflowStatus.Replaced && _settings.PreviewBeforeReplace))
-            {
-                if (notice != null) Balloon(notice);
                 return;
-            }
-            Balloon(notice == null ? result.Message : result.Message + " " + notice);
+            var message = result.Status == WorkflowStatus.Unchanged
+                ? "Nothing to correct in " + (_transport.SelectedParagraph ? "this paragraph." : "the selection.")
+                : result.Message;
+            var notice = timed.Last?.Notice;
+            Balloon(notice == null ? message : message + " " + notice, problem: category == "error");
         }
         catch (Exception ex)
         {
             FileLog.Write(_logPath, true, "error", "hotkey " + ex.GetType().Name);
-            Balloon("Something went wrong. Nothing was changed.");
+            Balloon("Something went wrong. Nothing was changed.", problem: true);
         }
         finally
         {
@@ -151,8 +158,21 @@ internal sealed class TrayController : ApplicationContext
 
     void OpenSettings()
     {
-        using var form = new SettingsForm(_settings.Clone());
-        if (form.ShowDialog() != DialogResult.OK || form.Saved == null) return;
+        if (_settingsForm != null)
+        {
+            _settingsForm.Activate();
+            return;
+        }
+        using var form = new SettingsForm(_settings.Clone(), Status());
+        _settingsForm = form;
+        try
+        {
+            if (form.ShowDialog() != DialogResult.OK || form.Saved == null) return;
+        }
+        finally
+        {
+            _settingsForm = null;
+        }
         _settings = form.Saved;
         try
         {
@@ -161,7 +181,7 @@ internal sealed class TrayController : ApplicationContext
         catch (Exception ex)
         {
             FileLog.Write(_logPath, true, "error", "settings " + ex.GetType().Name);
-            Balloon("Could not save settings.");
+            Balloon("The settings could not be saved, so nothing was changed.", problem: true);
             return;
         }
         ApplyEngine();
@@ -173,9 +193,9 @@ internal sealed class TrayController : ApplicationContext
         catch (Exception ex)
         {
             FileLog.Write(_logPath, true, "error", "startup registration " + ex.GetType().Name);
-            Balloon("Settings were saved, but Windows startup could not be updated.");
+            Balloon("The settings were saved, but starting with Windows could not be changed.", problem: true);
         }
-        _notify.Text = Tooltip();
+        ShowStatus();
     }
 
     void ApplyEngine()
@@ -187,11 +207,11 @@ internal sealed class TrayController : ApplicationContext
         // Starting again also leaves Failed: a settings change is the user's retry. Stopping frees about 1 GB.
         if (ReferenceEquals(next, _languageTool)) _server.Start();
         else _server.Stop();
-        ShowServerState();
+        ShowStatus();
         if (!string.IsNullOrEmpty(warning))
         {
             FileLog.Write(_logPath, true, "error", "engine rejected");
-            Balloon(warning);
+            Balloon(warning, problem: true);
         }
     }
 
@@ -199,7 +219,7 @@ internal sealed class TrayController : ApplicationContext
     {
         if (_hotkeys.Register(_settings.Hotkey)) return;
         FileLog.Write(_logPath, true, "error", "hotkey busy " + _settings.Hotkey.Display);
-        Balloon("Could not register " + _settings.Hotkey.Display + ". Another program may be using it. Change it in Settings.");
+        Balloon(_settings.Hotkey.Display + " is taken by another program, so the hotkey is off. Choose another one in Settings.", problem: true);
     }
 
     void OpenLog()
@@ -229,13 +249,11 @@ internal sealed class TrayController : ApplicationContext
         ExitThread();
     }
 
-    void Balloon(string message)
+    void Balloon(string message, bool problem = false)
     {
         try
         {
-            _notify.BalloonTipTitle = "LocalCorrect";
-            _notify.BalloonTipText = message.Length > 220 ? message.Substring(0, 220) : message;
-            _notify.ShowBalloonTip(4000);
+            _notify.ShowBalloonTip(4000, "LocalCorrect", message.Length > 220 ? message.Substring(0, 220) : message, problem ? ToolTipIcon.Warning : ToolTipIcon.None);
         }
         catch
         {
@@ -251,33 +269,38 @@ internal sealed class TrayController : ApplicationContext
         else if (state is LanguageToolState.Failed or LanguageToolState.NotInstalled)
             FileLog.Write(_logPath, true, "error", "languagetool " + state.ToString().ToLowerInvariant());
         if (state == LanguageToolState.Failed)
-            Balloon("LanguageTool stopped working. The built-in word lists are used until you change a setting or restart LocalCorrect.");
+            Balloon("LanguageTool stopped working. The built-in word lists are used until you change a setting or restart LocalCorrect.", problem: true);
         if (state == LanguageToolState.NotInstalled)
-            Balloon("LanguageTool is not installed with this copy of LocalCorrect. The built-in word lists are used.");
-        ShowServerState();
+            Balloon("LanguageTool is missing from this copy of LocalCorrect. The built-in word lists are used.", problem: true);
+        ShowStatus();
     }
 
-    void ShowServerState()
+    /// <summary>The two grey lines at the top of the tray menu, the tooltip and the line in an open settings window.</summary>
+    void ShowStatus()
     {
-        _status.Text = "LanguageTool: " + ServerState()
-            + (_server.State is LanguageToolState.Failed or LanguageToolState.NotInstalled ? " (using the word lists)" : "");
-        _notify.Text = Tooltip();
+        _status.Text = _paused ? "Paused. The hotkey is off." : Status();
+        _hotkeyLine.Text = "Hotkey: " + _settings.Hotkey.Display;
+        _settingsForm?.ShowLanguageToolState(Status());
+        var state = _paused ? "Paused" : _settings.Hotkey.Display + "\n" + Status();
+        // The tooltip holds 63 characters; the version number gives way first.
+        var text = Program.VersionLabel() + "\n" + state;
+        if (text.Length > 63) text = "LocalCorrect\n" + state;
+        _notify.Text = text.Length <= 63 ? text : text.Substring(0, 63);
     }
 
-    string ServerState() => _server.State switch
+    /// <summary>What corrects the text right now, in a few words.</summary>
+    string Status()
     {
-        LanguageToolState.Starting => "starting",
-        LanguageToolState.Ready => "ready",
-        LanguageToolState.Failed => "failed",
-        LanguageToolState.NotInstalled => "not installed",
-        _ => "off"
-    };
-
-    string Tooltip()
-    {
-        var text = Program.VersionLabel() + " — " + (_paused ? "paused" : _settings.Hotkey.Display)
-            + (ReferenceEquals(_engine, _languageTool) ? " — " + ServerState() : "");
-        return text.Length <= 63 ? text : text.Substring(0, 63);
+        if (!ReferenceEquals(_engine, _languageTool))
+            return _engine is OllamaCorrectionEngine ? "Using the local model" : "Using the built-in word lists";
+        return _server.State switch
+        {
+            LanguageToolState.Starting => "LanguageTool is starting",
+            LanguageToolState.Ready => "LanguageTool is ready",
+            LanguageToolState.Failed => "LanguageTool failed, using word lists",
+            LanguageToolState.NotInstalled => "LanguageTool missing, using word lists",
+            _ => "LanguageTool is off"
+        };
     }
 }
 

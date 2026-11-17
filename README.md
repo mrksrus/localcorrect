@@ -23,7 +23,7 @@ The zip is about 210 MB and takes about 280 MB once installed, most of it Langua
 1. Download `LocalCorrect-0.2.0-alpha.1-win-x64.zip` from the [releases](https://github.com/mrksrus/localcorrect/releases) page and unzip it.
 2. The program is unsigned, so SmartScreen may say it is unrecognized. Choose **More info**, then **Run anyway**.
 3. Double-click `install.cmd`. That copies LocalCorrect to `%LOCALAPPDATA%\LocalCorrect\app` and adds a Start menu shortcut. Installing over an older version replaces the `languagetool`, `jre` and `licenses` folders completely. You can also run `LocalCorrect.exe --install`.
-4. A tray icon appears. Right-click it for settings, pause, the log, and exit.
+4. A tray icon appears. Right-click it for the current state, settings, pause, the log, the licences, and exit.
 
 Running `LocalCorrect.exe` itself, without installing, also works. Install it if you want it to stay put and to start with Windows.
 
@@ -33,7 +33,7 @@ Remove it with `uninstall.cmd` (or `LocalCorrect.exe --uninstall`). That removes
 
 Click in the text field first so the caret is there. Select the words you want fixed, or select nothing to correct the paragraph the caret is in. Press **Ctrl+Alt+L** (change this in settings) and let go of the keys.
 
-A small window lists the changes. **Replace** pastes them over the selection. **Cancel** or Esc leaves the text alone. You can turn that preview off.
+A small window shows your text with the changes in place: removed words are struck through and what replaces them is underlined. Above it you see how many changes there are, the language, and what checked the text. **Replace** or Enter pastes the corrected text over the selection. **Cancel** or Esc leaves the text alone. A long text scrolls and starts at its first change. You can turn that preview off.
 
 The previous clipboard contents are put back afterwards, including formats that are not plain text when Windows exposes them as memory (HTML, RTF, PNG, and similar). A bitmap held only as a GDI handle cannot be snapshotted and is skipped.
 
@@ -80,11 +80,13 @@ Stored in `%APPDATA%\LocalCorrect\settings.json`. Open them from the tray icon.
 | Hotkey | Ctrl+Alt+L. Ctrl or Alt is required, plus a letter or F1–F12. |
 | Language | Detect automatically, or force English or German. |
 | Engine | LanguageTool on this computer. Or the built-in word lists only (no LanguageTool, less memory), or a local Ollama-compatible model on this computer. A 0.1.0 settings file that names the word lists is read as LanguageTool. |
-| Preview | On. Shows the changes and waits for Replace or Cancel. |
+| Show the changes and ask before replacing | On. Shows the preview and waits for Replace or Cancel. |
 | When nothing is selected, correct the current paragraph | On. Off: with nothing selected the hotkey only says so. |
-| Exclusions | Process names, one per line (`outlook`, `keepass`). `.exe` is optional. |
-| Start with Windows | Off. Uses the per-user Run key, not an administrator task. |
-| Logging | Off. Errors are still written. The selection is not. |
+| Excluded programs | Process names, one per line (`outlook`, `keepass`). `.exe` is optional. |
+| Start LocalCorrect when I sign in to Windows | Off. Uses the per-user Run key, not an administrator task. |
+| Write a diagnostic log | Off. Errors are still written. The selection is not. |
+
+The **About** section shows the version and the state of LanguageTool. **Licences and credits** there, and **Licences** in the tray menu, open `THIRD_PARTY.md` and the `licenses` folder.
 
 ## How it is built
 
@@ -107,12 +109,12 @@ dotnet publish src/LocalCorrect.App/LocalCorrect.App.csproj -c Release -r win-x6
 
 Set `LOCALCORRECT_BUNDLE_DIR` to such a folder and `dotnet test` also runs `BundleIntegrationTests`: it starts the real server through `LanguageToolServer`, corrects the German and English fixtures through `LanguageToolEngine`, prints the start, warm-up and warm check times, and fails if a warm German check takes 5 seconds or more.
 
-GitHub Actions (`.github/workflows/ci.yml`) builds and tests on `windows-latest`, runs the bundle script with `--smoke`, runs the integration test against the bundle, and uploads `LocalCorrect-<version>-win-x64.zip`. The version comes from `Directory.Build.props`.
+GitHub Actions (`.github/workflows/ci.yml`) builds and tests on `windows-latest`, opens the preview and settings windows with synthetic text and uploads pictures of them as `ui-screenshots`, runs the bundle script with `--smoke`, runs the integration test against the bundle, and uploads `LocalCorrect-<version>-win-x64.zip`. The version comes from `Directory.Build.props`.
 
 ## Roadmap
 
 - A stronger local model, behind the same `ICorrectionEngine`, once it beats the word lists on the public cases without inventing text.
-- Richer preview for long selections.
+- Accepting or rejecting single changes in the preview.
 - A signed installer.
 - macOS and Linux. The engine and the workflow are plain .NET. The missing pieces are a tray, a global hotkey, and a way to read and replace the selection (Accessibility on macOS, AT-SPI on Linux). Not in this version.
 

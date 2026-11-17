@@ -9,34 +9,38 @@ internal sealed class SettingsForm : Form
     readonly CheckBox _alt = new() { Text = "Alt", AutoSize = true, Checked = true };
     readonly CheckBox _shift = new() { Text = "Shift", AutoSize = true };
     readonly CheckBox _win = new() { Text = "Win", AutoSize = true };
-    readonly ComboBox _key = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 70 };
-    readonly ComboBox _language = new() { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill };
-    readonly ComboBox _engine = new() { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill };
-    readonly TextBox _endpoint = new() { Dock = DockStyle.Fill };
-    readonly TextBox _model = new() { Dock = DockStyle.Fill };
-    readonly CheckBox _preview = new() { Text = "Ask before replacing the selection", AutoSize = true };
+    readonly ComboBox _key = new() { DropDownStyle = ComboBoxStyle.DropDownList, AccessibleName = "Hotkey key" };
+    readonly ComboBox _language = new() { DropDownStyle = ComboBoxStyle.DropDownList };
+    readonly ComboBox _engine = new() { DropDownStyle = ComboBoxStyle.DropDownList };
+    readonly TextBox _endpoint = new();
+    readonly TextBox _model = new();
+    readonly CheckBox _preview = new() { Text = "Show the changes and ask before replacing", AutoSize = true };
     readonly CheckBox _paragraph = new() { Text = "When nothing is selected, correct the current paragraph", AutoSize = true };
-    readonly TextBox _excluded = new() { Multiline = true, ScrollBars = ScrollBars.Vertical, Dock = DockStyle.Fill, AcceptsReturn = true };
+    readonly TextBox _excluded = new() { Multiline = true, ScrollBars = ScrollBars.Vertical, AcceptsReturn = true, AccessibleName = "Excluded programs" };
     readonly CheckBox _startup = new() { Text = "Start LocalCorrect when I sign in to Windows", AutoSize = true };
-    readonly CheckBox _logging = new() { Text = "Write a diagnostic log (the text you correct is never written)", AutoSize = true };
+    readonly CheckBox _logging = new() { Text = "Write a diagnostic log", AutoSize = true };
+    readonly Label _languageTool = Ui.Label("");
 
     public AppSettings? Saved { get; private set; }
 
-    public SettingsForm(AppSettings current)
+    public SettingsForm(AppSettings current, string languageToolState)
     {
+        var em = Ui.Em;
         Text = "LocalCorrect settings";
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
         ShowInTaskbar = false;
         StartPosition = FormStartPosition.CenterScreen;
-        Font = SystemFonts.MessageBoxFont;
-        ClientSize = new Size(520, 590);
+        Font = Ui.Font();
+        // The window is as large as its content at the current text size; nothing has a pixel size of its own.
+        AutoSize = true;
+        AutoSizeMode = AutoSizeMode.GrowAndShrink;
 
         for (var letter = 'A'; letter <= 'Z'; letter++) _key.Items.Add(letter.ToString());
         for (var function = 1; function <= 12; function++) _key.Items.Add("F" + function.ToString());
-        _language.Items.AddRange(new object[] { "Detect automatically", "English", "Deutsch" });
-        _engine.Items.AddRange(new object[] { "LanguageTool on this computer (recommended)", "Built-in word lists only", "Local model on this computer (Ollama)" });
+        _language.Items.AddRange(new object[] { "Detect automatically", "English", "German (Deutsch)" });
+        _engine.Items.AddRange(new object[] { "LanguageTool (recommended)", "Built-in word lists only", "Local model (Ollama)" });
 
         _ctrl.Checked = current.Hotkey.Ctrl;
         _alt.Checked = current.Hotkey.Alt;
@@ -56,56 +60,82 @@ internal sealed class SettingsForm : Form
         _logging.Checked = current.Logging;
         _engine.SelectedIndexChanged += (_, _) => UpdateEndpointEnabled();
         UpdateEndpointEnabled();
+        ShowLanguageToolState(languageToolState);
 
-        var table = new TableLayoutPanel
+        // Two columns: what the hotkey does on the left; the optional parts and the credits on the right.
+        var wrapAt = em * 25;
+        var everyday = Column();
+        Section(everyday, "Correction");
+        Row(everyday, "Language", _language);
+        Row(everyday, "Engine", _engine);
+        Wide(everyday, Ui.Label("LanguageTool needs about 1 GB of memory and a minute to start. Until it is ready, and if it fails, the built-in word lists are used.", muted: true, wrapAt: wrapAt));
+        Section(everyday, "Hotkey");
+        _key.Font = Font;
+        _key.Width = em * 4;
+        _key.Margin = new Padding(em / 2, 0, 0, 0);
+        _key.Anchor = AnchorStyles.Left;
+        // The row has a height of its own: a drop-down list is taller on screen than the height it reports for layout.
+        var hotkey = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = false, MinimumSize = new Size(0, em * 2) };
+        foreach (var modifier in new[] { _ctrl, _alt, _shift, _win })
         {
-            Dock = DockStyle.Fill,
-            ColumnCount = 2,
-            Padding = new Padding(12),
-            AutoScroll = true
-        };
-        table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 150));
-        table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-
-        var hotkey = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, AutoSize = true };
+            modifier.Anchor = AnchorStyles.Left;
+            modifier.Margin = new Padding(0, 0, em / 2, 0);
+            modifier.Font = Font;
+        }
         hotkey.Controls.AddRange(new Control[] { _ctrl, _alt, _shift, _win, _key });
+        Wide(everyday, hotkey);
+        Wide(everyday, Ui.Label("Ctrl or Alt, plus a letter or F1 to F12.", muted: true, wrapAt: wrapAt));
+        Section(everyday, "Behaviour");
+        Wide(everyday, _preview);
+        Wide(everyday, _paragraph);
+        Wide(everyday, _startup);
+        Section(everyday, "Privacy and log");
+        Wide(everyday, Ui.Label("Your text is corrected on this computer. It is never sent anywhere and never written to the log.", muted: true, wrapAt: wrapAt));
+        Wide(everyday, _logging);
 
-        AddRow(table, "Hotkey", hotkey);
-        AddRow(table, "Language", _language);
-        AddRow(table, "Engine", _engine);
-        AddRow(table, "Model address", _endpoint);
-        AddRow(table, "Model name", _model);
-        AddSpan(table, _preview);
-        AddSpan(table, _paragraph);
-        AddSpan(table, new Label { Text = "Do not correct these programs (one name per line, .exe optional)", AutoSize = true, MaximumSize = new Size(470, 0) });
-        AddSpan(table, _excluded, 90);
-        AddSpan(table, _startup);
-        AddSpan(table, _logging);
-        AddSpan(table, new Label
-        {
-            Text = "LanguageTool runs on this computer and fixes spelling, grammar and punctuation. It needs about 1 GB of memory and a minute to start; until then, and if it fails, the built-in word lists are used. The local model option only talks to an Ollama-compatible server at 127.0.0.1, localhost, or ::1. Leave the preview on when you try it.",
-            AutoSize = true,
-            MaximumSize = new Size(470, 0)
-        });
+        var extras = Column();
+        extras.Margin = new Padding(em * 2, 0, 0, 0);
+        extras.TabIndex = 1;
+        Section(extras, "Local model");
+        Wide(extras, Ui.Label("Optional. Used when the engine is the local model: an Ollama-compatible server on this computer (127.0.0.1, localhost or ::1). Keep the preview on when you try it.", muted: true, wrapAt: wrapAt));
+        Row(extras, "Address", _endpoint);
+        Row(extras, "Model", _model);
+        Section(extras, "Excluded programs");
+        Wide(extras, Ui.Label("LocalCorrect does nothing in these programs. One name per line; .exe is optional.", muted: true, wrapAt: wrapAt));
+        _excluded.Height = em * 5;
+        _excluded.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+        Wide(extras, _excluded);
+        Section(extras, "About");
+        Wide(extras, Ui.Label(Program.VersionLabel()));
+        Wide(extras, _languageTool);
+        Wide(extras, Ui.Label("Uses LanguageTool (LGPL 2.1 or later), unmodified, for English and German. LocalCorrect is not affiliated with LanguageTool.", muted: true, wrapAt: wrapAt));
+        var licences = Ui.Button("Licences and credits");
+        licences.Click += (_, _) => Ui.OpenLicences(this);
+        Wide(extras, licences);
+        licences.Margin = new Padding(0, em / 2, 0, 0);
 
-        var buttons = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Bottom,
-            FlowDirection = FlowDirection.RightToLeft,
-            Height = 48,
-            Padding = new Padding(12, 8, 12, 8)
-        };
-        var save = new Button { Text = "Save", AutoSize = true };
-        var cancel = new Button { Text = "Cancel", AutoSize = true, DialogResult = DialogResult.Cancel };
+        var columns = new TableLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, ColumnCount = 2, Margin = Padding.Empty, TabIndex = 0 };
+        columns.Controls.Add(everyday, 0, 0);
+        columns.Controls.Add(extras, 1, 0);
+
+        var save = Ui.Button("Save");
+        var cancel = Ui.Button("Cancel");
+        cancel.DialogResult = DialogResult.Cancel;
         save.Click += (_, _) => Save();
-        buttons.Controls.Add(save);
-        buttons.Controls.Add(cancel);
         AcceptButton = save;
         CancelButton = cancel;
+        var buttons = Ui.Buttons(save, cancel);
+        buttons.Margin = new Padding(0, em, 0, 0);
+        buttons.TabIndex = 1;
 
-        Controls.Add(buttons);
-        Controls.Add(table);
+        var root = new TableLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, ColumnCount = 1, Padding = new Padding(em) };
+        root.Controls.Add(columns, 0, 0);
+        root.Controls.Add(buttons, 0, 1);
+        Controls.Add(root);
     }
+
+    /// <summary>The LanguageTool line in About; the tray updates it while the window is open.</summary>
+    public void ShowLanguageToolState(string state) => _languageTool.Text = state;
 
     void UpdateEndpointEnabled()
     {
@@ -162,22 +192,54 @@ internal sealed class SettingsForm : Form
         Close();
     }
 
-    static void AddRow(TableLayoutPanel table, string label, Control control)
+    static TableLayoutPanel Column() => new()
     {
-        var row = table.RowCount++;
-        table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        table.Controls.Add(new Label { Text = label, AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 8, 8, 4) }, 0, row);
-        control.Margin = new Padding(0, 4, 0, 4);
-        table.Controls.Add(control, 1, row);
+        AutoSize = true,
+        AutoSizeMode = AutoSizeMode.GrowAndShrink,
+        ColumnCount = 2,
+        Anchor = AnchorStyles.Top | AnchorStyles.Left,
+        Margin = Padding.Empty
+    };
+
+    /// <summary>Adds a control in the next row and in tab order; a wide one spans the label and the field column.</summary>
+    static void Add(TableLayoutPanel table, Control control, int column, bool wide, bool newRow = true)
+    {
+        if (newRow)
+        {
+            table.RowCount++;
+            table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        }
+        // Set here and not inherited later: a control that was measured in the default font keeps that size for the layout.
+        if (control is not Label) control.Font = Ui.Font();
+        control.TabIndex = table.Controls.Count;
+        table.Controls.Add(control, column, table.RowCount - 1);
+        if (wide) table.SetColumnSpan(control, 2);
     }
 
-    static void AddSpan(TableLayoutPanel table, Control control, int height = 0)
+    static void Section(TableLayoutPanel table, string title)
     {
-        var row = table.RowCount++;
-        table.RowStyles.Add(height > 0 ? new RowStyle(SizeType.Absolute, height) : new RowStyle(SizeType.AutoSize));
-        control.Margin = new Padding(0, 6, 0, 2);
-        if (height > 0) control.Height = height - 8;
-        table.Controls.Add(control, 0, row);
-        table.SetColumnSpan(control, 2);
+        var heading = Ui.Label(title, style: FontStyle.Bold);
+        heading.Margin = new Padding(0, table.RowCount == 0 ? 0 : Ui.Em, 0, Ui.Em / 3);
+        Add(table, heading, 0, wide: true);
+    }
+
+    static void Row(TableLayoutPanel table, string label, Control field)
+    {
+        var name = Ui.Label(label);
+        name.Anchor = AnchorStyles.Left;
+        name.Margin = new Padding(0, 0, Ui.Em, 0);
+        Add(table, name, 0, wide: false);
+        field.AccessibleName = label;
+        // The font first: a drop-down list takes its height from the font when its width is set, and the row is laid out with that height.
+        field.Font = Ui.Font();
+        field.Width = Ui.Em * 17;
+        field.Margin = new Padding(0, Ui.Em / 5, 0, Ui.Em / 5);
+        Add(table, field, 1, wide: false, newRow: false);
+    }
+
+    static void Wide(TableLayoutPanel table, Control control)
+    {
+        control.Margin = new Padding(0, Ui.Em / 5, 0, Ui.Em / 5);
+        Add(table, control, 0, wide: true);
     }
 }
