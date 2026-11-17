@@ -10,6 +10,7 @@ Earlier decisions LC-01 to LC-13 live in the Outlook add-in (`mrksrus/localcorre
 - W-04, 2026-11-17. Licensing must be correct and visible: a dedicated "Credits and licences" section in the README and an accurate THIRD_PARTY.md naming every bundled component, its version, licence and source. Ship the licence texts. For LanguageTool, point to the exact upstream source of the bundled version and keep its jars replaceable (LGPL). "LanguageTool" is used only as "uses LanguageTool", never as this app's name. LanguageTool Premium rules and its cloud AI are not open source and are not used.
 - W-05, 2026-11-17. The user should not have to select text first: with nothing selected, the hotkey corrects the current paragraph. The UI (preview and settings) gets a visual redesign.
 - W-06, 2026-11-17. Prefer abstention over a wrong edit for suggestion types that change meaning or style: apply spelling, capitalisation, grammar, punctuation and confused-word fixes; do not apply style suggestions.
+- W-07, 2026-11-17. LanguageTool checks English as `en-US` and German as `de-DE`; there is no variant setting. British spellings are changed to the American form.
 
 ## Observed implementation
 
