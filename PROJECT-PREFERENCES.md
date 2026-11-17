@@ -11,6 +11,8 @@ Earlier decisions LC-01 to LC-13 live in the Outlook add-in (`mrksrus/localcorre
 - W-05, 2026-11-17. The user should not have to select text first: with nothing selected, the hotkey corrects the current paragraph. The UI (preview and settings) gets a visual redesign.
 - W-06, 2026-11-17. Prefer abstention over a wrong edit for suggestion types that change meaning or style: apply spelling, capitalisation, grammar, punctuation and confused-word fixes; do not apply style suggestions.
 - W-07, 2026-11-17. LanguageTool checks English as `en-US` and German as `de-DE`; there is no variant setting. British spellings are changed to the American form.
+- W-08, 2026-11-17. The source archives of the bundled GPL and LGPL components (LanguageTool, Java runtime) are uploaded to a third-party-sources release in this repository and linked from THIRD_PARTY.md. No written offer; nothing added to the app zip.
+- W-09, 2026-11-17. With nothing selected, a paragraph that contains links, images, tables or inline formatting is not replaced; the app asks for a selection.
 
 ## Observed implementation
 
