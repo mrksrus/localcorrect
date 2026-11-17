@@ -17,7 +17,10 @@ jobs:
 
       - name: Read version
         shell: bash
-        run: echo "VERSION=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props)" >> "$GITHUB_ENV"
+        run: |
+          VERSION=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props)
+          test -n "$VERSION"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
       - name: Build
         run: dotnet build LocalCorrect.sln -c Release --verbosity minimal

@@ -10,6 +10,7 @@ their own licences. Everything below is shipped unmodified; where something was 
 | --- | --- | --- | --- | --- |
 | [LanguageTool](https://languagetool.org) (open-source edition: server, core, English and German rules) | 6.6, build `f3e8d91` (2025-03-27) | LGPL-2.1-or-later | [`languagetool-org/languagetool`](https://github.com/languagetool-org/languagetool/tree/v6.6), tag `v6.6` | `languagetool\` (licence: `languagetool\COPYING.txt`) |
 | LanguageTool's Java libraries (125 jars, including LanguageTool's own) | see the table | Apache-2.0, BSD, MIT, EPL-1.0/LGPL, CDDL/GPL with Classpath Exception and others, per jar | Maven Central, coordinates per jar | `languagetool\libs\`, listed in [`licenses/languagetool-libraries.md`](licenses/languagetool-libraries.md) |
+| [Hunspell](https://hunspell.github.io) spell-checking library, native builds inside the `hunspell-java` wrapper (the wrapper itself is Apache-2.0) | as built into `com.gitlab.dumonts:hunspell` 2.1.2 | MPL-1.1 / GPL-2.0-or-later / LGPL-2.1-or-later, used here under LGPL-2.1-or-later | [`hunspell/hunspell`](https://github.com/hunspell/hunspell); wrapper and build: [`dumonts/hunspell-java`](https://gitlab.com/dumonts/hunspell-java) | `languagetool\libs\hunspell.jar` (e.g. `win32-x86-64/hunspell.dll`; `licenses\LGPL-2.1-only.txt`) |
 | German spelling dictionary (igerman98 by Björn Jacke, frami extension by Franz Michael Baumann), with Jan Schreiber's German word list (public domain) | as in LanguageTool 6.6 | GPL-2.0 or GPL-3.0 | [igerman98](https://www.j3e.de/ispell/igerman98/), [germandict](https://sourceforge.net/projects/germandict/) | `languagetool\org\languagetool\resource\de\hunspell\` (`COPYING_GPLv2.txt`, `COPYING_GPLv3.txt`, `de_DE_frami_README.txt`, `de_DE.README`) |
 | German part-of-speech data (Morphy, with additions by Julian von Heyl) | `german-pos-dict` 1.2.4 | CC-BY-SA-4.0 | [`languagetool-org/german-pos-dict`](https://github.com/languagetool-org/german-pos-dict) | `languagetool\libs\german-pos-dict.jar` (`licenses\CC-BY-SA-4.0.txt`) |
 | English spelling and part-of-speech dictionaries (from SCOWL, AGID, 12dicts and the Moby part-of-speech list by Kevin Atkinson and others) | `english-pos-dict` 0.6 | LGPL-2.1; notices of the word sources inside | [`languagetool-org/english-pos-dict`](https://github.com/languagetool-org/english-pos-dict) | `languagetool\libs\english-pos-dict.jar`; notices in `languagetool\org\languagetool\resource\en\` (`agid-readme.txt`, `12dicts-readme.html`, `pos-readme.txt`) |
@@ -67,7 +68,6 @@ Maven coordinates and SHA-256.
   built by Adoptium from OpenJDK 17 (<https://github.com/openjdk/jdk17u>).
 - The dictionaries and libraries: the projects linked in the tables above and in `licenses/languagetool-libraries.md`.
 
-<!-- D1: source offer -->
 The source archives of LanguageTool 6.6 and Eclipse Temurin 17.0.21+9 are also kept in the
 [`third-party-sources`](https://github.com/mrksrus/localcorrect/releases/tag/third-party-sources) release of this
 repository.

@@ -60,7 +60,7 @@ Licence texts: `licenses\` in this package (file names are the SPDX identifiers)
 | `libs/gson.jar` | `com.google.code.gson:gson` | 2.11.0 | Apache-2.0 | jar pom | Apache-2.0 (pom) |
 | `libs/guava.jar` | `com.google.guava:guava` | 33.3.1-jre | Apache-2.0 | jar pom | Apache License, Version 2.0 (parent com.google.guava:guava-parent:33.3.1-jre) |
 | `libs/hppc.jar` | `com.carrotsearch:hppc` | 0.8.2 | Apache-2.0 | jar pom | Apache License, Version 2.0 (parent com.carrotsearch:hppc-parent:0.8.2) |
-| `libs/hunspell.jar` | `com.gitlab.dumonts:hunspell` | 2.1.2 | Apache-2.0 | jar pom | Apache License 2.0 (pom) |
+| `libs/hunspell.jar` | `com.gitlab.dumonts:hunspell` | 2.1.2 | Apache-2.0 (Java wrapper); the native Hunspell libraries inside are MPL-1.1 / GPL-2.0-or-later / LGPL-2.1-or-later, used under LGPL-2.1-or-later (see THIRD_PARTY.md) | jar pom | Apache License 2.0 (pom) |
 | `libs/icu4j.jar` | `com.ibm.icu:icu4j` | 75.1 | Unicode-3.0 | jar pom | Unicode-3.0 (parent com.ibm.icu:icu4j-root:75.1) |
 | `libs/indriya.jar` | `tech.units:indriya` | 1.3 | BSD-3-Clause ¹ | jar pom | BSD (pom) |
 | `libs/istack-commons-runtime.jar` | `com.sun.istack:istack-commons-runtime` | 4.1.2 | BSD-3-Clause (Eclipse Distribution License 1.0) | jar pom | Eclipse Distribution License - v 1.0 (parent com.sun.istack:istack-commons:4.1.2) |
