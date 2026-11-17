@@ -139,10 +139,11 @@ internal sealed class SettingsForm : Form
         base.OnLoad(e);
         // At a large text size on a small screen the window would reach under the taskbar and hide Save; scroll instead.
         var area = Screen.FromControl(this).WorkingArea;
-        if (Height <= area.Height && Width <= area.Width) return;
-        AutoSize = false;
+        var content = Size;
+        if (content.Height <= area.Height && content.Width <= area.Width) return;
+        AutoSize = false; // puts the window back to the default 300 by 300, so the size was read first
         AutoScroll = true;
-        Size = new Size(Math.Min(Width + SystemInformation.VerticalScrollBarWidth, area.Width), Math.Min(Height, area.Height));
+        Size = new Size(Math.Min(content.Width + SystemInformation.VerticalScrollBarWidth, area.Width), Math.Min(content.Height, area.Height));
         Location = new Point(area.Left + (area.Width - Width) / 2, area.Top + (area.Height - Height) / 2);
     }
 

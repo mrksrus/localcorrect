@@ -81,7 +81,7 @@ internal static class Ui
         }
         catch (Exception)
         {
-            MessageBox.Show(owner, "The licence files are missing from this copy of LocalCorrect. They are part of the release zip: THIRD_PARTY.md and the licenses folder.",
+            MessageBox.Show(owner, "The licence files could not be opened. THIRD_PARTY.md and the licenses folder belong next to LocalCorrect.exe and are part of the release zip.",
                 "LocalCorrect", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
     }

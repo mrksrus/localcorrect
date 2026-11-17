@@ -74,8 +74,13 @@ public class WindowScreenshotTests
         try
         {
             using var form = new SettingsForm(new AppSettings(), "LanguageTool is ready");
-            Capture(form, "settings-200-simulated-scrolls");
-            Assert.True(form.AutoScroll, "the window should scroll instead of growing past the screen");
+            Capture(form, "settings-200-simulated-scrolls", () =>
+            {
+                Assert.True(form.AutoScroll, "the window should scroll instead of growing past the screen");
+                Assert.True(form.Height == Screen.FromControl(form).WorkingArea.Height, "the window " + form.Bounds + " should use the whole height above the taskbar");
+                // The client width does not count the scroll bar at the right edge.
+                Assert.True(form.ClientSize.Width >= form.Controls[0].Width, "both columns (" + form.Controls[0].Width + " wide) should show without scrolling sideways in " + form.ClientSize);
+            });
         }
         finally
         {
@@ -99,7 +104,7 @@ public class WindowScreenshotTests
         return edits.ToArray();
     }
 
-    static void Capture(Form form, string name)
+    static void Capture(Form form, string name, Action? check = null)
     {
         using (form)
         {
@@ -113,6 +118,7 @@ public class WindowScreenshotTests
             var area = Screen.FromControl(form).WorkingArea;
             Assert.True(area.Contains(form.Bounds), name + ": the window " + form.Bounds + " is not inside the space above the taskbar " + area);
             AssertNothingIsCut(form, name);
+            check?.Invoke();
 
             var directory = Environment.GetEnvironmentVariable("LOCALCORRECT_SCREENSHOT_DIR");
             if (string.IsNullOrEmpty(directory)) directory = Path.Combine(AppContext.BaseDirectory, "screenshots");
