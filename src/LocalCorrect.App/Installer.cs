@@ -90,12 +90,24 @@ internal static class Installer
             if (string.Equals(Path.GetFullPath(file), Path.GetFullPath(target), StringComparison.OrdinalIgnoreCase)) continue;
             File.Copy(file, target, overwrite: true);
         }
-        var licenses = Path.Combine(source, "licenses");
-        if (!Directory.Exists(licenses)) return;
-        var destLicenses = Path.Combine(dest, "licenses");
-        Directory.CreateDirectory(destLicenses);
-        foreach (var file in Directory.GetFiles(licenses))
-            File.Copy(file, Path.Combine(destLicenses, Path.GetFileName(file)), overwrite: true);
+        // Replaced whole so an upgrade leaves no stale jars or runtime files behind.
+        foreach (var folder in new[] { "languagetool", "jre", "licenses" })
+        {
+            var from = Path.Combine(source, folder);
+            if (!Directory.Exists(from)) continue;
+            var to = Path.Combine(dest, folder);
+            if (Directory.Exists(to)) Directory.Delete(to, recursive: true);
+            CopyFolder(from, to);
+        }
+    }
+
+    static void CopyFolder(string source, string dest)
+    {
+        Directory.CreateDirectory(dest);
+        foreach (var file in Directory.GetFiles(source))
+            File.Copy(file, Path.Combine(dest, Path.GetFileName(file)));
+        foreach (var dir in Directory.GetDirectories(source))
+            CopyFolder(dir, Path.Combine(dest, Path.GetFileName(dir)));
     }
 
     static void ScheduleDelete(string directory)

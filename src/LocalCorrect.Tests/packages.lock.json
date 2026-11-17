@@ -107,7 +107,7 @@
       "localcorrect.engine": {
         "type": "Project",
         "dependencies": {
-          "LocalCorrect.Core": "[0.1.0-alpha.1, )"
+          "LocalCorrect.Core": "[0.2.0-alpha.1, )"
         }
       }
     }

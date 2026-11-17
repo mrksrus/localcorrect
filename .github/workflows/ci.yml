@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'release/**']
   pull_request:
 
 jobs:
@@ -15,6 +15,10 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
+      - name: Read version
+        shell: bash
+        run: echo "VERSION=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props)" >> "$GITHUB_ENV"
+
       - name: Build
         run: dotnet build LocalCorrect.sln -c Release --verbosity minimal
 
@@ -24,16 +28,33 @@ jobs:
       - name: Publish self-contained tray app
         run: dotnet publish src/LocalCorrect.App/LocalCorrect.App.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o publish
 
+      - name: Cache LanguageTool and JDK downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            build/cache/LanguageTool-6.6.zip
+            build/cache/temurin-17.0.21_9-windows-x64.zip
+          key: bundle-lt-53600506-temurin-98518ecf
+
+      - name: Bundle LanguageTool and Java, smoke test
+        shell: bash
+        run: build/bundle-languagetool.sh publish --smoke
+
       - name: Package zip
-        shell: pwsh
+        shell: bash
         run: |
-          Copy-Item installer/install.cmd publish/install.cmd
-          Copy-Item installer/uninstall.cmd publish/uninstall.cmd
-          New-Item -ItemType Directory -Force dist | Out-Null
-          Compress-Archive -Path publish/* -DestinationPath dist/LocalCorrect-0.1.0-alpha.1-win-x64.zip -Force
+          dotnet_root=$(dirname "$(command -v dotnet)")
+          cp "$dotnet_root/LICENSE.txt" publish/licenses/dotnet-LICENSE.txt
+          cp "$dotnet_root/ThirdPartyNotices.txt" publish/licenses/dotnet-ThirdPartyNotices.txt
+          cp installer/install.cmd installer/uninstall.cmd publish/
+          mkdir -p dist
+          (cd publish && 7z a -tzip -mx=7 "../dist/LocalCorrect-$VERSION-win-x64.zip" * > /dev/null)
+          7z l "dist/LocalCorrect-$VERSION-win-x64.zip" | tail -n 3
+          ls -l dist
 
       - uses: actions/upload-artifact@v4
         with:
-          name: LocalCorrect-0.1.0-alpha.1-win-x64
-          path: dist/LocalCorrect-0.1.0-alpha.1-win-x64.zip
+          name: LocalCorrect-${{ env.VERSION }}-win-x64
+          path: dist/LocalCorrect-${{ env.VERSION }}-win-x64.zip
           if-no-files-found: error
+          compression-level: 0
