@@ -33,7 +33,7 @@ internal static class Installer
                 });
             }
             MessageBox.Show(
-                "LocalCorrect is installed for your Windows user.\n\n" + destDir + "\n\nNo administrator account is needed. Select text in Outlook, a browser, or almost any other window and press Ctrl+Alt+L. Right-click the tray icon to change that.",
+                "LocalCorrect is installed for your Windows user.\n\n" + destDir + "\n\nNo administrator account is needed. Select text, or put the caret in a paragraph, in Outlook, a browser, or almost any other window and press Ctrl+Alt+L. Right-click the tray icon to change that.",
                 "LocalCorrect",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Information);
