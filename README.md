@@ -18,7 +18,7 @@ An optional local-model engine can talk to an [Ollama](https://ollama.com)-compa
 
 Windows 10 or Windows 11, 64-bit. No administrator account. The published program includes its own .NET runtime.
 
-The zip is about 215 MB and takes about 280 MB once installed, most of it LanguageTool (about 155 MB) and its Java runtime (about 55 MB). While LanguageTool runs it uses about 1 GB of memory.
+The zip is about 210 MB and takes about 280 MB once installed, most of it LanguageTool (about 155 MB) and its Java runtime (about 45 MB). While LanguageTool runs it uses about 1 GB of memory.
 
 1. Download `LocalCorrect-0.2.0-alpha.1-win-x64.zip` from the [releases](https://github.com/mrksrus/localcorrect/releases) page and unzip it.
 2. The program is unsigned, so SmartScreen may say it is unrecognized. Choose **More info**, then **Run anyway**.
