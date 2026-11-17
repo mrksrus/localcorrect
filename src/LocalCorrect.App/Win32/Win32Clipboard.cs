@@ -10,6 +10,7 @@ namespace LocalCorrect.App.Win32;
 internal sealed class Win32Clipboard : IClipboardAccess
 {
     const int MaxFormatBytes = 32 * 1024 * 1024;
+    public static readonly uint HtmlFormat = NativeMethods.RegisterClipboardFormat("HTML Format");
     public nint Owner { get; set; }
 
     public uint SequenceNumber => NativeMethods.GetClipboardSequenceNumber();

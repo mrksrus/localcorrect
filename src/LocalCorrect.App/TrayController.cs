@@ -104,6 +104,12 @@ internal sealed class TrayController : ApplicationContext
         {
             var target = ForegroundProbe.Capture();
             _transport.Target = target.Handle;
+            if (!KeyboardChord.WaitForRelease(_settings.Hotkey, 1000))
+            {
+                FileLog.Write(_logPath, _settings.Logging, "info", "hotkey still held");
+                Balloon("Let go of the hotkey keys, then try again.");
+                return;
+            }
             var timed = new TimedEngine(_engine);
             var workflow = new CorrectionWorkflow(_clipboard, _transport, timed);
             var result = workflow.Run(new CorrectionRequest
@@ -111,6 +117,9 @@ internal sealed class TrayController : ApplicationContext
                 ProcessName = target.ProcessName,
                 Elevated = target.Blocked,
                 PasswordField = target.Password,
+                CorrectParagraph = _settings.CorrectParagraphWhenNothingSelected,
+                WindowClass = target.FocusClass,
+                HtmlFormat = Win32Clipboard.HtmlFormat,
                 Preview = _settings.PreviewBeforeReplace,
                 Language = _settings.Language,
                 ExcludedProcesses = _settings.ExcludedProcesses
@@ -119,7 +128,8 @@ internal sealed class TrayController : ApplicationContext
             FileLog.Write(_logPath, _settings.Logging, category,
                 result.Status + " chars=" + result.Characters.ToString() + " edits=" + result.Edits.ToString()
                 + " lang=" + (result.Language ?? "-") + " engine=" + (timed.Last?.Engine ?? _engine.Id)
-                + " ms=" + (timed.Milliseconds?.ToString() ?? "-") + " process=" + ProcessFilter.CoreName(target.ProcessName));
+                + " ms=" + (timed.Milliseconds?.ToString() ?? "-") + " process=" + ProcessFilter.CoreName(target.ProcessName)
+                + " class=" + target.FocusClass);
             var notice = timed.Last?.Notice;
             if (result.Status == WorkflowStatus.PreviewDeclined || (result.Status == WorkflowStatus.Replaced && _settings.PreviewBeforeReplace))
             {

@@ -15,6 +15,7 @@ internal sealed class SettingsForm : Form
     readonly TextBox _endpoint = new() { Dock = DockStyle.Fill };
     readonly TextBox _model = new() { Dock = DockStyle.Fill };
     readonly CheckBox _preview = new() { Text = "Ask before replacing the selection", AutoSize = true };
+    readonly CheckBox _paragraph = new() { Text = "When nothing is selected, correct the current paragraph", AutoSize = true };
     readonly TextBox _excluded = new() { Multiline = true, ScrollBars = ScrollBars.Vertical, Dock = DockStyle.Fill, AcceptsReturn = true };
     readonly CheckBox _startup = new() { Text = "Start LocalCorrect when I sign in to Windows", AutoSize = true };
     readonly CheckBox _logging = new() { Text = "Write a diagnostic log (the text you correct is never written)", AutoSize = true };
@@ -30,7 +31,7 @@ internal sealed class SettingsForm : Form
         ShowInTaskbar = false;
         StartPosition = FormStartPosition.CenterScreen;
         Font = SystemFonts.MessageBoxFont;
-        ClientSize = new Size(520, 560);
+        ClientSize = new Size(520, 590);
 
         for (var letter = 'A'; letter <= 'Z'; letter++) _key.Items.Add(letter.ToString());
         for (var function = 1; function <= 12; function++) _key.Items.Add("F" + function.ToString());
@@ -49,6 +50,7 @@ internal sealed class SettingsForm : Form
         _endpoint.Text = current.LocalModelEndpoint;
         _model.Text = current.LocalModelName;
         _preview.Checked = current.PreviewBeforeReplace;
+        _paragraph.Checked = current.CorrectParagraphWhenNothingSelected;
         _excluded.Text = string.Join(Environment.NewLine, current.ExcludedProcesses);
         _startup.Checked = current.StartWithWindows;
         _logging.Checked = current.Logging;
@@ -74,6 +76,7 @@ internal sealed class SettingsForm : Form
         AddRow(table, "Model address", _endpoint);
         AddRow(table, "Model name", _model);
         AddSpan(table, _preview);
+        AddSpan(table, _paragraph);
         AddSpan(table, new Label { Text = "Do not correct these programs (one name per line, .exe optional)", AutoSize = true, MaximumSize = new Size(470, 0) });
         AddSpan(table, _excluded, 90);
         AddSpan(table, _startup);
@@ -150,6 +153,7 @@ internal sealed class SettingsForm : Form
             LocalModelEndpoint = endpoint.Length == 0 ? "http://127.0.0.1:11434" : endpoint,
             LocalModelName = model.Length == 0 ? "llama3.2" : model,
             PreviewBeforeReplace = _preview.Checked,
+            CorrectParagraphWhenNothingSelected = _paragraph.Checked,
             ExcludedProcesses = AppSettings.NormalizeExclusions(_excluded.Text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)),
             StartWithWindows = _startup.Checked,
             Logging = _logging.Checked

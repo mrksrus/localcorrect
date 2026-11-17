@@ -31,7 +31,7 @@ Remove it with `uninstall.cmd` (or `LocalCorrect.exe --uninstall`). That removes
 
 ## Use
 
-Click in the text field first so the caret is there. Select the words you want fixed. Press **Ctrl+Alt+L** (change this in settings).
+Click in the text field first so the caret is there. Select the words you want fixed, or select nothing to correct the paragraph the caret is in. Press **Ctrl+Alt+L** (change this in settings) and let go of the keys.
 
 A small window lists the changes. **Replace** pastes them over the selection. **Cancel** or Esc leaves the text alone. You can turn that preview off.
 
@@ -53,7 +53,23 @@ What they change, from the same cases as the Firefox version:
 
 What it leaves alone: names, links, e-mail addresses, code, file names, numbers, acronyms, command-line flags, and quoted lines that start with `>`. A word that is valid in the other language stays (`Meeting` in a German sentence). It does not correct a real word used in the wrong place (`there` / `their`). When two fixes are equally likely it picks the more common word.
 
-If nothing is selected, LocalCorrect tells you and does not type anything. It does not correct a whole message on its own.
+### Nothing selected: the current paragraph
+
+With nothing selected, LocalCorrect selects the paragraph the caret is in, corrects it like a selection, and pastes it back without its paragraph mark, so the next paragraph keeps its formatting. It never corrects more than that paragraph. It decides that nothing is selected when a copy brings nothing within 0.3 seconds.
+
+- **Word and Outlook, WordPad-style boxes, Chrome, Edge and other Chromium programs:** the paragraph (Ctrl+Down, Ctrl+Up, Ctrl+Shift+Down).
+- **Firefox:** these keys go to the start and end of the visual line, so only the line on screen is corrected.
+- **One-line boxes and other programs:** the line (Home, Shift+End); in a one-line box that is the whole field. (Notepad on Windows 11 is a rich-text box and gets the paragraph keys.)
+
+It changes nothing, puts the caret at the end of the paragraph and asks you to select the words when the paragraph:
+
+- contains a link, a picture, a table, or bold, italic, underlined, struck-through, superscript or subscript text (pasting plain text would remove it);
+- still contains a line break, tab or table cell after the paragraph mark is dropped (for example when Chrome kept the column and the selection reached into the next line);
+- is longer than 5,000 characters.
+
+After "no changes", Cancel in the preview, or an error, the caret is put at the end of the paragraph (End) so your next keystroke does not replace it. Turn the whole fallback off with **When nothing is selected, correct the current paragraph** in settings.
+
+The hotkey does nothing at all in terminals (Windows Terminal, cmd, PowerShell, PuTTY, mintty, Alacritty, WezTerm), code editors (VS Code, Cursor, Windsurf, Visual Studio, JetBrains IDEs, Sublime Text, Notepad++) and Excel. There Ctrl+C would stop a command, copy a whole line, or a paste would overwrite a cell.
 
 ## Settings
 
@@ -65,6 +81,7 @@ Stored in `%APPDATA%\LocalCorrect\settings.json`. Open them from the tray icon.
 | Language | Detect automatically, or force English or German. |
 | Engine | LanguageTool on this computer. Or the built-in word lists only (no LanguageTool, less memory), or a local Ollama-compatible model on this computer. A 0.1.0 settings file that names the word lists is read as LanguageTool. |
 | Preview | On. Shows the changes and waits for Replace or Cancel. |
+| When nothing is selected, correct the current paragraph | On. Off: with nothing selected the hotkey only says so. |
 | Exclusions | Process names, one per line (`outlook`, `keepass`). `.exe` is optional. |
 | Start with Windows | Off. Uses the per-user Run key, not an administrator task. |
 | Logging | Off. Errors are still written. The selection is not. |
@@ -106,6 +123,7 @@ GitHub Actions (`.github/workflows/ci.yml`) builds and tests on `windows-latest`
 - Editors that draw their own text and do not answer Ctrl+C, such as Google Docs, do not work.
 - A window running as administrator is left alone. The tray icon says so. Running LocalCorrect itself as administrator is not required and is not the setup this installer uses.
 - Password boxes that are standard Windows edit controls are skipped. A browser password field is not always detectable. Do not use the hotkey on a password.
+- With nothing selected, Firefox and plain edit boxes give the visual line, not the paragraph. On an empty last line Word may take the paragraph above. Formatting is detected from the HTML copy only; a box that copies only RTF (WordPad-style) is not checked for bold or links. The keys in Word, Outlook and Chromium are not yet confirmed on a real Windows machine.
 - Selections longer than 50,000 characters are refused. Words longer than 32 letters are left unchanged.
 - The clipboard is borrowed for a moment. If another program needs it during that moment, that program waits or fails, and LocalCorrect then puts back what was there.
 - This alpha has not been exercised inside a live copy of Outlook 2019. The automated tests cover the engine and the clipboard session, not the Outlook window.

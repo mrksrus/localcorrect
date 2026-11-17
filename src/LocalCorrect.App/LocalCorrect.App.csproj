@@ -11,6 +11,9 @@
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="LocalCorrect.App.Tests" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\LocalCorrect.Core\LocalCorrect.Core.csproj" />
     <ProjectReference Include="..\LocalCorrect.Engine\LocalCorrect.Engine.csproj" />
   </ItemGroup>

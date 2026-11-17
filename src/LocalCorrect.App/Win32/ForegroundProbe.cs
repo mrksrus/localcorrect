@@ -2,15 +2,17 @@ using System.Text;
 
 namespace LocalCorrect.App.Win32;
 
-internal readonly record struct ForegroundTarget(nint Handle, string ProcessName, bool Blocked, bool Password);
+internal readonly record struct ForegroundTarget(nint Handle, string ProcessName, bool Blocked, bool Password, string FocusClass);
 
 internal static class ForegroundProbe
 {
     public static ForegroundTarget Capture()
     {
         var hwnd = NativeMethods.GetForegroundWindow();
-        if (hwnd == 0) return new ForegroundTarget(0, "", false, false);
-        return new ForegroundTarget(hwnd, ProcessName(hwnd), IsBlocked(hwnd), IsPassword(hwnd));
+        if (hwnd == 0) return new ForegroundTarget(0, "", false, false, "");
+        var focus = FocusWindow(hwnd);
+        var focusClass = ClassName(focus);
+        return new ForegroundTarget(hwnd, ProcessName(hwnd), IsBlocked(hwnd), IsPassword(focus, focusClass), focusClass);
     }
 
     static string ProcessName(nint hwnd)
@@ -74,16 +76,26 @@ internal static class ForegroundProbe
         }
     }
 
-    static bool IsPassword(nint hwnd)
+    static nint FocusWindow(nint hwnd)
     {
         var thread = NativeMethods.GetWindowThreadProcessId(hwnd, out _);
-        if (thread == 0) return false;
+        if (thread == 0) return 0;
         var info = new GUITHREADINFO { cbSize = System.Runtime.InteropServices.Marshal.SizeOf<GUITHREADINFO>() };
-        if (!NativeMethods.GetGUIThreadInfo(thread, ref info) || info.hwndFocus == 0) return false;
-        var name = new StringBuilder(64);
-        if (NativeMethods.GetClassName(info.hwndFocus, name, name.Capacity) <= 0) return false;
-        if (!string.Equals(name.ToString(), "Edit", StringComparison.Ordinal)) return false;
-        var sent = NativeMethods.SendMessageTimeout(info.hwndFocus, NativeMethods.EmGetPasswordChar, 0, 0, NativeMethods.SmtoAbortIfHung, 200, out var passwordChar);
+        return NativeMethods.GetGUIThreadInfo(thread, ref info) ? info.hwndFocus : 0;
+    }
+
+    static string ClassName(nint hwnd)
+    {
+        if (hwnd == 0) return "";
+        var name = new StringBuilder(256);
+        var length = NativeMethods.GetClassName(hwnd, name, name.Capacity);
+        return length > 0 ? name.ToString(0, length) : "";
+    }
+
+    static bool IsPassword(nint focus, string focusClass)
+    {
+        if (!string.Equals(focusClass, "Edit", StringComparison.Ordinal)) return false;
+        var sent = NativeMethods.SendMessageTimeout(focus, NativeMethods.EmGetPasswordChar, 0, 0, NativeMethods.SmtoAbortIfHung, 200, out var passwordChar);
         return sent != 0 && passwordChar != 0;
     }
 }
