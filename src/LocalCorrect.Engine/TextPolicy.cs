@@ -14,7 +14,7 @@ public static class TextPolicy
 
     static readonly Regex Titles = new(@"(?:Herr|Herrn|Frau|Dr|Prof|Mr|Mrs|Ms|Dear|Liebe|Lieber|Hallo|Hi|Hello)\.?\s+\z", Options, Timeout);
     static readonly Regex Skip = new(@"(?:[a-z][a-z0-9+.-]*://|www\.)\S+|(?<!\S)--?\p{L}[\p{L}0-9-]*|[^\s@]+@\S+|[@#$%][\p{L}0-9_]+|\S*[0-9_\\/]\S*|[\p{L}0-9-]+(?:\.[\p{L}0-9-]+)+", Options | RegexOptions.IgnoreCase, Timeout);
-    static readonly Regex Quoted = new(@"^[ \t]*>[^\n\r  ]*", Options | RegexOptions.Multiline, Timeout);
+    static readonly Regex Quoted = new(@"^[ \t]*>[^\n\r\u2028\u2029]*", Options | RegexOptions.Multiline, Timeout);
     static readonly Regex SentenceEnd = new(@"(?:[.!?:]\s+|\n\s*)\z", Options, Timeout);
 
     public static List<(int Start, int End)> ProtectedRanges(string text)
