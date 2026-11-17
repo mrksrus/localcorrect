@@ -59,7 +59,7 @@ With nothing selected, LocalCorrect selects the paragraph the caret is in, corre
 
 - **Word and Outlook, WordPad-style boxes, Chrome, Edge and other Chromium programs:** the paragraph (Ctrl+Down, Ctrl+Up, Ctrl+Shift+Down).
 - **Firefox:** these keys go to the start and end of the visual line, so only the line on screen is corrected.
-- **Notepad, one-line boxes and other programs:** the line (Home, Shift+End); in a one-line box that is the whole field.
+- **One-line boxes and other programs:** the line (Home, Shift+End); in a one-line box that is the whole field. (Notepad on Windows 11 is a rich-text box and gets the paragraph keys.)
 
 It changes nothing, puts the caret at the end of the paragraph and asks you to select the words when the paragraph:
 
@@ -69,7 +69,7 @@ It changes nothing, puts the caret at the end of the paragraph and asks you to s
 
 After "no changes", Cancel in the preview, or an error, the caret is put at the end of the paragraph (End) so your next keystroke does not replace it. Turn the whole fallback off with **When nothing is selected, correct the current paragraph** in settings.
 
-The hotkey does nothing at all in terminals (Windows Terminal, cmd, PowerShell, PuTTY, mintty), code editors (VS Code, Visual Studio, IntelliJ, Sublime Text, Notepad++) and Excel. There Ctrl+C would stop a command, copy a whole line, or a paste would overwrite a cell.
+The hotkey does nothing at all in terminals (Windows Terminal, cmd, PowerShell, PuTTY, mintty, Alacritty, WezTerm), code editors (VS Code, Cursor, Windsurf, Visual Studio, JetBrains IDEs, Sublime Text, Notepad++) and Excel. There Ctrl+C would stop a command, copy a whole line, or a paste would overwrite a cell.
 
 ## Settings
 

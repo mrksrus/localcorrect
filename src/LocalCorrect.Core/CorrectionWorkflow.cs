@@ -52,7 +52,9 @@ public sealed class CorrectionRequest
     /// <summary>Registered id of the clipboard's "HTML Format"; 0 skips the formatting check.</summary>
     public uint HtmlFormat { get; init; }
     /// <summary>How long the first copy may take before the app decides nothing is selected.</summary>
-    public int CopyWaitMilliseconds { get; init; } = 300;
+    /// <remarks>As long as 0.1.0's wait: a shorter one let a slow program's late copy of a selection be read as
+    /// the paragraph, and the paste then replaced the whole paragraph.</remarks>
+    public int CopyWaitMilliseconds { get; init; } = 1200;
     /// <summary>Wait for a copy that must come: the paragraph copy, and the first copy when the fallback is off.</summary>
     public int SlowCopyWaitMilliseconds { get; init; } = 1200;
     /// <summary>A copy is read only after the clipboard has not changed for this long, so a late earlier copy is not read.</summary>
@@ -149,8 +151,10 @@ public sealed class CorrectionWorkflow
                 _transport.Select(NoSelectionPolicy.KeysFor(request.WindowClass));
                 text = CopyAndRead(request.SlowCopyWaitMilliseconds, request.QuietMilliseconds, request.HtmlFormat, out _, out html) ?? "";
                 // Leave the paragraph mark out of the replacement so the next paragraph keeps its formatting.
-                if (NoSelectionPolicy.DropTrailingBreak(ref text)) _transport.Select(SelectKeys.DropLast);
-                _selected = text.Length > 0;
+                var dropped = NoSelectionPolicy.DropTrailingBreak(ref text);
+                if (dropped) _transport.Select(SelectKeys.DropLast);
+                // Collapse even when nothing was copied (a web password box refuses Ctrl+C but stays selected).
+                _selected = text.Length > 0 || !dropped;
             }
         }
         catch (ClipboardBusyException)
@@ -241,8 +245,8 @@ public sealed class CorrectionWorkflow
         try
         {
             ClipboardSession.WriteText(_clipboard, correction.Text, wait: _sleep);
-            _selected = false;
             _transport.Paste();
+            _selected = false;
             Pause(request.PasteSettleMilliseconds);
         }
         catch (Exception)

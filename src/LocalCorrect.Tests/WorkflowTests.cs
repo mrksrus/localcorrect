@@ -47,6 +47,8 @@ public class WorkflowTests
         /// <summary>How long the first Ctrl+C takes to land; later copies take <see cref="CopyCost"/>.</summary>
         public int FirstCopyDelay { get; set; }
         public int CopyCost { get; set; }
+        /// <summary>Like a web password box: Ctrl+C copies nothing even with a selection.</summary>
+        public bool RefuseCopy { get; set; }
         public int Copies { get; private set; }
         public List<string> Pasted { get; } = new();
         public List<SelectKeys> Keys { get; } = new();
@@ -74,7 +76,7 @@ public class WorkflowTests
             Copies++;
             Enqueue(Copies == 1 ? FirstCopyDelay : CopyCost, () =>
             {
-                if (Selected.Length == 0) return;
+                if (Selected.Length == 0 || RefuseCopy) return;
                 var entries = new List<ClipboardEntry> { new(ClipboardFormatPolicy.UnicodeText, ClipboardText.Encode(Selected)) };
                 if (Html != null) entries.Add(new ClipboardEntry(HtmlFormat, System.Text.Encoding.UTF8.GetBytes(Html)));
                 Assert.True(Clipboard.TryOpen());
@@ -428,20 +430,36 @@ public class WorkflowTests
     }
 
     [Fact]
-    public void LateFirstCopyIsFollowedByTheParagraphCopyAndTheSecondIsRead()
+    public void SelectionIsCollapsedWhenTheParagraphCopyBringsNothing()
+    {
+        var (clip, editor, engine, workflow) = Harness();
+        Caret(editor, "hunter2 is secret", 3);
+        editor.RefuseCopy = true;
+        var result = workflow.Run(Request(windowClass: "Chrome_RenderWidgetHostHWND"));
+        Assert.Equal(WorkflowStatus.NoSelection, result.Status);
+        Assert.Equal(SelectKeys.Collapse, editor.Keys[^1]);
+        Assert.Equal("", editor.Selected);
+        Assert.Equal(0, engine.Calls);
+        AssertClipboardRestored(clip);
+    }
+
+    [Theory]
+    [InlineData(350)]
+    [InlineData(400)]
+    [InlineData(800)]
+    [InlineData(1100)]
+    public void SlowCopyOfASelectionIsNotTakenForTheParagraph(int copyCost)
     {
         var (clip, editor, _, workflow) = Harness();
-        // The user's selection "Alpha" is copied 400 ms late, after the 300 ms detection gave up;
-        // the paragraph keys and the second copy come after it, 50 ms apart.
-        editor.Text = "Alpha teh beta.\r\nNext";
+        // Every Ctrl+C in this program is slow. The user's selection must be what gets corrected and replaced.
+        editor.Text = "Alpha teh beta gamma.\r\nNext";
         editor.Anchor = 0;
-        editor.Caret = 5;
-        editor.FirstCopyDelay = 400;
-        editor.CopyCost = 50;
-        var result = workflow.Run(Request());
+        editor.Caret = 9;
+        editor.FirstCopyDelay = editor.CopyCost = copyCost;
+        var result = workflow.Run(Request(preview: true), (original, _, _) => original == "Alpha teh");
         Assert.Equal(WorkflowStatus.Replaced, result.Status);
-        Assert.Equal(new[] { "Alpha the beta." }, editor.Pasted);
-        Assert.Equal("Alpha the beta.\r\nNext", editor.Text);
+        Assert.Empty(editor.Keys);
+        Assert.Equal("Alpha the beta gamma.\r\nNext", editor.Text);
         AssertClipboardRestored(clip);
     }
 

@@ -8,8 +8,9 @@ public static class ProcessFilter
     /// </summary>
     public static readonly string[] NeverCorrect =
     {
-        "WindowsTerminal", "cmd", "powershell", "pwsh", "conhost", "putty", "mintty",
-        "Code", "devenv", "idea64", "sublime_text", "notepad++",
+        "WindowsTerminal", "OpenConsole", "cmd", "powershell", "pwsh", "conhost", "putty", "mintty", "alacritty", "wezterm-gui",
+        "Code", "Code - Insiders", "Cursor", "Windsurf", "devenv", "sublime_text", "notepad++",
+        "idea64", "pycharm64", "rider64", "webstorm64", "clion64", "goland64", "phpstorm64", "rustrover64",
         "excel"
     };
 
