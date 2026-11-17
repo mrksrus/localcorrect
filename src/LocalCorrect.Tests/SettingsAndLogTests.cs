@@ -89,7 +89,26 @@ public class SettingsAndLogTests
         var fallback = SettingsStore.Load(path);
         Assert.Equal("auto", fallback.Language);
         Assert.Equal("Ctrl+Alt+L", fallback.Hotkey.Display);
-        Assert.Equal("symspell", SettingsStore.Load(path + ".missing").Engine);
+        Assert.Equal("languagetool", SettingsStore.Load(path + ".missing").Engine);
+    }
+
+    [Theory]
+    [InlineData("symspell", "languagetool")]
+    [InlineData("SymSpell", "languagetool")]
+    [InlineData("wordlists", "wordlists")]
+    [InlineData("ollama", "ollama")]
+    [InlineData("languagetool", "languagetool")]
+    [InlineData("something-else", "languagetool")]
+    public void SavedEngineIdsAreMigrated(string saved, string expected)
+    {
+        var path = Path.Combine(Path.GetTempPath(), "localcorrect-tests", Guid.NewGuid().ToString("n"), "settings.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, "{\"engine\":\"" + saved + "\",\"language\":\"de\"}");
+        var loaded = SettingsStore.Load(path);
+        Assert.Equal(expected, loaded.Engine);
+        Assert.Equal("de", loaded.Language);
+        SettingsStore.Save(path, loaded);
+        Assert.Equal(expected, SettingsStore.Load(path).Engine);
     }
 
     [Fact]
@@ -152,7 +171,7 @@ public class SettingsAndLogTests
         });
         var settings = new AppSettings { Engine = "ollama", LocalModelEndpoint = "http://example.com", LocalModelName = "llama3.2" };
         var symspell = new SymSpellCorrector("the 10\n", "und 10\n");
-        var engine = CorrectionEngineFactory.Create(settings, symspell, handler, out var warning);
+        var engine = CorrectionEngineFactory.Create(settings, symspell, null, handler, out var warning);
         Assert.Same(symspell, engine);
         Assert.False(string.IsNullOrEmpty(warning));
         Assert.False(called);
@@ -180,6 +199,57 @@ public class SettingsAndLogTests
         var result = engine.Correct("recieve", "en");
         Assert.Equal("receive", result.Text);
         Assert.Equal(1, handler.Calls);
+    }
+
+    [Fact]
+    public void OllamaAsksForTemperatureZeroAndKeepsTheModelLoaded()
+    {
+        string? body = null;
+        var handler = new StubHandler(request =>
+        {
+            using var reader = new StreamReader(request.Content!.ReadAsStream());
+            body = reader.ReadToEnd();
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("""{"response":"hello"}""") };
+        });
+        using var engine = new OllamaCorrectionEngine("http://127.0.0.1:11434", "llama3.2", handler);
+        engine.Correct("hello", "en");
+        using var json = System.Text.Json.JsonDocument.Parse(body!);
+        Assert.Equal(0, json.RootElement.GetProperty("options").GetProperty("temperature").GetInt32());
+        Assert.Equal("30m", json.RootElement.GetProperty("keep_alive").GetString());
+        Assert.False(json.RootElement.GetProperty("stream").GetBoolean());
+    }
+
+    [Theory]
+    [InlineData("I will recieve teh parcel tomorow.", "I will receive the parcel tomorrow.", false)]
+    [InlineData("dont", "don't", false)]
+    [InlineData("Line one has a typo.\nLine two.", "Line one has a typo. Line two.", true)]
+    [InlineData("Please send the report by Friday.", "Kindly ensure that the quarterly report reaches me before Friday.", true)]
+    [InlineData("Please send the report by Friday morning.", "Please mail this summary until Monday evening.", true)]
+    public void OllamaRewriteGuard(string text, string answer, bool rejected)
+    {
+        Assert.Equal(rejected, OllamaCorrectionEngine.IsRewrite(text, answer));
+        var handler = new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(System.Text.Json.JsonSerializer.Serialize(new { response = answer }))
+        });
+        using var engine = new OllamaCorrectionEngine("http://127.0.0.1:11434", "llama3.2", handler);
+        if (!rejected)
+        {
+            Assert.Equal(answer, engine.Correct(text, "en").Text);
+            return;
+        }
+        var error = Assert.Throws<LocalEngineException>(() => engine.Correct(text, "en"));
+        Assert.Equal("The local model changed too much of the text. Nothing was changed.", error.Message);
+    }
+
+    [Fact]
+    public void FactoryPicksLanguageToolByDefault()
+    {
+        var symspell = new SymSpellCorrector("the 10\n", "und 10\n");
+        using var server = new LanguageToolServer(Path.GetTempPath());
+        var languageTool = new LanguageToolEngine(server, symspell);
+        Assert.Same(languageTool, CorrectionEngineFactory.Create(new AppSettings(), symspell, languageTool, null, out _));
+        Assert.Same(symspell, CorrectionEngineFactory.Create(new AppSettings { Engine = "wordlists" }, symspell, languageTool, null, out _));
     }
 
     [Fact]

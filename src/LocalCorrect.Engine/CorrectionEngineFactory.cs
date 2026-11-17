@@ -9,13 +9,14 @@ public static class CorrectionEngineFactory
     /// Builds the engine the user picked. A local-model address that is not on this
     /// computer is refused and the built-in word lists are used instead.
     /// </summary>
-    public static ICorrectionEngine Create(AppSettings settings, SymSpellCorrector symspell, HttpMessageHandler? httpHandler, out string? warning)
+    public static ICorrectionEngine Create(AppSettings settings, SymSpellCorrector symspell, LanguageToolEngine? languageTool, HttpMessageHandler? httpHandler, out string? warning)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(symspell);
         warning = null;
-        if (!string.Equals(settings.Engine, OllamaCorrectionEngine.EngineId, StringComparison.OrdinalIgnoreCase))
-            return symspell;
+        var engine = AppSettings.NormalizeEngine(settings.Engine);
+        if (engine == LanguageToolEngine.EngineId && languageTool != null) return languageTool;
+        if (engine != OllamaCorrectionEngine.EngineId) return symspell;
         try
         {
             return new OllamaCorrectionEngine(settings.LocalModelEndpoint, settings.LocalModelName, httpHandler);

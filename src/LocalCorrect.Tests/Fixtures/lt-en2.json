@@ -1,0 +1,64 @@
+{
+ "matches": [
+  {
+   "offset": 0,
+   "length": 3,
+   "replacements": [
+    {
+     "value": "The"
+    }
+   ],
+   "rule": {
+    "id": "UPPERCASE_SENTENCE_START",
+    "category": {
+     "id": "CASING"
+    }
+   }
+  },
+  {
+   "offset": 24,
+   "length": 2,
+   "replacements": [
+    {
+     "value": "It"
+    }
+   ],
+   "rule": {
+    "id": "UPPERCASE_SENTENCE_START",
+    "category": {
+     "id": "CASING"
+    }
+   }
+  },
+  {
+   "offset": 36,
+   "length": 4,
+   "replacements": [
+    {
+     "value": ", and"
+    }
+   ],
+   "rule": {
+    "id": "COMMA_COMPOUND_SENTENCE",
+    "category": {
+     "id": "PUNCTUATION"
+    }
+   }
+  },
+  {
+   "offset": 44,
+   "length": 7,
+   "replacements": [
+    {
+     "value": "was"
+    }
+   ],
+   "rule": {
+    "id": "ENGLISH_WORD_REPEAT_RULE",
+    "category": {
+     "id": "MISC"
+    }
+   }
+  }
+ ]
+}

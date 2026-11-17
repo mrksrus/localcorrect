@@ -20,7 +20,7 @@ namespace LocalCorrect.Engine;
 /// </summary>
 public sealed class SymSpellCorrector : ICorrectionEngine
 {
-    public const string EngineId = "symspell";
+    public const string EngineId = "wordlists";
     const int MaxSuggestLength = 32;
     const int MaxTextLength = 200_000;
     const RegexOptions Options = RegexOptions.CultureInvariant | RegexOptions.Compiled;
@@ -46,12 +46,8 @@ public sealed class SymSpellCorrector : ICorrectionEngine
         "spam", "blog", "vlog", "podcast", "smartphone", "laptop", "tablet", "browser", "chatbot"
     };
 
-    static readonly Regex Titles = new(@"(?:Herr|Herrn|Frau|Dr|Prof|Mr|Mrs|Ms|Dear|Liebe|Lieber|Hallo|Hi|Hello)\.?\s+\z", Options, Timeout);
-    static readonly Regex Skip = new(@"(?:[a-z][a-z0-9+.-]*://|www\.)\S+|(?<!\S)--?\p{L}[\p{L}0-9-]*|[^\s@]+@\S+|[@#$%][\p{L}0-9_]+|\S*[0-9_\\/]\S*|[\p{L}0-9-]+(?:\.[\p{L}0-9-]+)+", Options | RegexOptions.IgnoreCase, Timeout);
-    static readonly Regex Quoted = new(@"^[ \t]*>[^\n\r\u2028\u2029]*", Options | RegexOptions.Multiline, Timeout);
     static readonly Regex Word = new(@"[\p{L}\p{M}]+(?:['’][\p{L}]+)?", Options, Timeout);
     static readonly Regex LoneI = new(@"(?<![\p{L}'’.-])i(?![\p{L}'’.-])", Options, Timeout);
-    static readonly Regex SentenceEnd = new(@"(?:[.!?:]\s+|\n\s*)\z", Options, Timeout);
     static readonly Regex Upper = new(@"\p{Lu}", Options, Timeout);
 
     readonly Dictionary<string, Lang> _langs;
@@ -90,6 +86,16 @@ public sealed class SymSpellCorrector : ICorrectionEngine
         return de > en ? "de" : "en";
     }
 
+    /// <summary>
+    /// True when the word is in the English or the German word lists. German compounds are not split here:
+    /// LanguageTool knows them better, and "Aufjedenfall" would split into known words.
+    /// </summary>
+    public bool IsKnown(string word)
+    {
+        var lower = Lower(word);
+        return Known(_langs["en"], word) || Known(_langs["de"], word) || Tech.Contains(lower) || GermanColloquial.Contains(lower);
+    }
+
     public CorrectionResult Correct(string text, string language)
     {
         if (text == null) throw new ArgumentNullException(nameof(text));
@@ -110,16 +116,14 @@ public sealed class SymSpellCorrector : ICorrectionEngine
         var normalized = language.Trim().ToLowerInvariant();
         var code = normalized is "en" or "de" ? normalized : Detect(text);
         var other = code == "en" ? "de" : "en";
-        var skip = new List<(int Start, int End)>();
-        foreach (Match match in Skip.Matches(text)) skip.Add((match.Index, match.Index + match.Length));
-        foreach (Match match in Quoted.Matches(text)) skip.Add((match.Index, match.Index + match.Length));
+        var skip = TextPolicy.ProtectedRanges(text);
 
         var edits = new List<CorrectionEdit>();
         if (code == "en")
         {
             foreach (Match match in LoneI.Matches(text))
             {
-                if (!Overlaps(skip, match.Index, match.Index + 1))
+                if (!TextPolicy.Overlaps(skip, match.Index, match.Index + 1))
                     edits.Add(new CorrectionEdit(match.Index, 1, "i", "I"));
             }
         }
@@ -131,16 +135,14 @@ public sealed class SymSpellCorrector : ICorrectionEngine
             var end = start + typed.Length;
             var lowerTyped = Lower(typed);
             var contraction = code == "en" && Contractions.ContainsKey(lowerTyped);
-            if ((typed.Length < 3 && !contraction) || Overlaps(skip, start, end)) continue;
+            if ((typed.Length < 3 && !contraction) || TextPolicy.Overlaps(skip, start, end)) continue;
             if (typed.Length > 1 && Upper.IsMatch(typed.Substring(1))) continue;
             if (typed.IndexOf('\'') >= 0 || typed.IndexOf('’') >= 0) continue;
             if (Valid(code, typed)) continue;
 
-            var from = Math.Max(0, start - 40);
-            var before = text.Substring(from, start - from);
-            var sentenceStart = start == 0 || SentenceEnd.IsMatch(before);
+            var sentenceStart = TextPolicy.IsSentenceStart(text, start);
             var capitalised = typed[0] != char.ToLowerInvariant(typed[0]);
-            if (capitalised && (Titles.IsMatch(before) || (code == "en" && !sentenceStart))) continue;
+            if (capitalised && (TextPolicy.FollowsTitle(text, start) || (code == "en" && !sentenceStart))) continue;
 
             var (suggested, distance) = Suggest(code, lowerTyped, !contraction && Valid(other, typed));
             if (suggested == null) continue;
@@ -151,25 +153,7 @@ public sealed class SymSpellCorrector : ICorrectionEngine
         }
 
         edits = edits.OrderBy(edit => edit.Offset).ToList();
-        var output = new StringBuilder(text.Length + 16);
-        var position = 0;
-        foreach (var edit in edits)
-        {
-            output.Append(text, position, edit.Offset - position);
-            output.Append(edit.Replacement);
-            position = edit.Offset + edit.Length;
-        }
-        output.Append(text, position, text.Length - position);
-        return new CorrectionResult(output.ToString(), code, edits);
-    }
-
-    static bool Overlaps(List<(int Start, int End)> ranges, int start, int end)
-    {
-        foreach (var range in ranges)
-        {
-            if (start < range.End && end > range.Start) return true;
-        }
-        return false;
+        return new CorrectionResult(CorrectionEdit.Apply(text, edits), code, edits, EngineId);
     }
 
     (string? Word, int Distance) Suggest(string code, string lower, bool umlautOnly)

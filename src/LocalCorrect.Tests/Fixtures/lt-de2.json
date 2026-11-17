@@ -1,0 +1,34 @@
+{
+ "matches": [
+  {
+   "offset": 0,
+   "length": 3,
+   "replacements": [
+    {
+     "value": "Die"
+    }
+   ],
+   "rule": {
+    "id": "UPPERCASE_SENTENCE_START",
+    "category": {
+     "id": "CASING"
+    }
+   }
+  },
+  {
+   "offset": 53,
+   "length": 7,
+   "replacements": [
+    {
+     "value": "das"
+    }
+   ],
+   "rule": {
+    "id": "GERMAN_WORD_REPEAT_RULE",
+    "category": {
+     "id": "REDUNDANCY"
+    }
+   }
+  }
+ ]
+}

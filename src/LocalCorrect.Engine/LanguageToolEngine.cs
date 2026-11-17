@@ -1,0 +1,157 @@
+using System.Net.Http;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+using LocalCorrect.Core;
+
+namespace LocalCorrect.Engine;
+
+/// <summary>
+/// Default engine: asks the bundled LanguageTool server on 127.0.0.1 and applies only spelling, capitalisation,
+/// grammar, punctuation and confused-word fixes (W-06). Anything doubtful is left alone. While the server is not
+/// ready, or when a request fails or takes too long, the built-in word lists correct the text instead.
+/// </summary>
+public sealed class LanguageToolEngine : ICorrectionEngine
+{
+    public const string EngineId = "languagetool";
+    public const string StartingNotice = "LanguageTool is still starting. The built-in word lists were used this time.";
+    public const string FailedRequestNotice = "LanguageTool could not check this text in time. The built-in word lists were used this time.";
+
+    static readonly HashSet<string> Applied = new(StringComparer.Ordinal)
+    {
+        "TYPOS", "CASING", "GRAMMAR", "PUNCTUATION", "CONFUSED_WORDS", "COMPOUNDING", "MULTITOKEN_SPELLING"
+    };
+    static readonly char[] LineBreaks = { '\n', '\r', '\u2028', '\u2029' };
+
+    readonly LanguageToolServer _server;
+    readonly SymSpellCorrector _wordLists;
+    int _noticedStart;
+
+    public LanguageToolEngine(LanguageToolServer server, SymSpellCorrector wordLists)
+    {
+        _server = server ?? throw new ArgumentNullException(nameof(server));
+        _wordLists = wordLists ?? throw new ArgumentNullException(nameof(wordLists));
+    }
+
+    public string Id => EngineId;
+    public string DisplayName => "LanguageTool on this computer";
+    public TimeSpan RequestTimeout { get; init; } = TimeSpan.FromSeconds(10);
+
+    public CorrectionResult Correct(string text, string language)
+    {
+        if (text == null) throw new ArgumentNullException(nameof(text));
+        var forced = (language ?? "auto").Trim().ToLowerInvariant();
+        var code = forced is "en" or "de" ? forced : _wordLists.Detect(text);
+        var address = _server.Address;
+        if (_server.State != LanguageToolState.Ready || address == null)
+        {
+            // Not installed, failed or stopped: the tray has said so once already.
+            if (_server.State != LanguageToolState.Starting) return Fallback(text, code, null);
+            // One notice per server start; later presses while it starts fall back silently.
+            var first = _noticedStart != _server.Starts;
+            _noticedStart = _server.Starts;
+            return Fallback(text, code, first ? StartingNotice : null);
+        }
+
+        List<CorrectionEdit>? edits;
+        try
+        {
+            using var cancel = new CancellationTokenSource(RequestTimeout);
+            using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(address, "check"))
+            {
+                Content = LanguageToolServer.CheckContent(code == "de" ? "de-DE" : "en-US", text)
+            };
+            using var response = _server.Http.Send(request, cancel.Token);
+            response.EnsureSuccessStatusCode();
+            using var stream = response.Content.ReadAsStream(cancel.Token);
+            using var document = JsonDocument.Parse(stream);
+            edits = Edits(text, code, document.RootElement);
+        }
+        catch (Exception)
+        {
+            edits = null;
+        }
+        if (edits == null) return Fallback(text, code, FailedRequestNotice);
+        return new CorrectionResult(CorrectionEdit.Apply(text, edits), code, edits, EngineId);
+    }
+
+    CorrectionResult Fallback(string text, string code, string? notice)
+    {
+        var result = _wordLists.Correct(text, code);
+        return new CorrectionResult(result.Text, result.Language, result.Edits, result.Engine, notice);
+    }
+
+    /// <summary>The accepted edits, or null when the response does not fit the text (then nothing of it is trusted).</summary>
+    List<CorrectionEdit>? Edits(string text, string code, JsonElement root)
+    {
+        var matches = new List<(int Offset, int Length, string Rule, string Category, string? Replacement)>();
+        foreach (var match in root.GetProperty("matches").EnumerateArray())
+        {
+            var offset = match.GetProperty("offset").GetInt32();
+            var length = match.GetProperty("length").GetInt32();
+            if (offset < 0 || length < 0 || offset > text.Length - length) return null;
+            var rule = match.GetProperty("rule");
+            string? replacement = null;
+            if (match.TryGetProperty("replacements", out var list) && list.ValueKind == JsonValueKind.Array && list.GetArrayLength() > 0
+                && list[0].TryGetProperty("value", out var value) && value.ValueKind == JsonValueKind.String)
+                replacement = value.GetString();
+            matches.Add((offset, length, rule.GetProperty("id").GetString() ?? "", rule.GetProperty("category").GetProperty("id").GetString() ?? "", replacement));
+        }
+
+        List<(int Start, int End)> protectedRanges;
+        try
+        {
+            protectedRanges = TextPolicy.ProtectedRanges(text);
+        }
+        catch (RegexMatchTimeoutException)
+        {
+            return null;
+        }
+        var edits = new List<CorrectionEdit>();
+        var end = 0;
+        foreach (var match in matches.OrderBy(match => match.Offset))
+        {
+            var original = text.Substring(match.Offset, match.Length);
+            var replacement = match.Replacement;
+            if (original.Length == 0 || string.IsNullOrEmpty(replacement) || replacement == original) continue;
+            if (replacement.IndexOfAny(LineBreaks) >= 0 || original.IndexOfAny(LineBreaks) >= 0) continue;
+            if (!Applied.Contains(match.Category)) continue;
+            if (match.Offset < end || TextPolicy.Overlaps(protectedRanges, match.Offset, match.Offset + match.Length)) continue;
+            // The text may be a fragment that starts in the middle of a sentence.
+            if (match.Rule == "UPPERCASE_SENTENCE_START" && text.AsSpan(0, match.Offset).IsWhiteSpace()) continue;
+            if (IsSpeller(match.Rule) && LooksLikeName(text, code, match.Offset, original, replacement)) continue;
+            edits.Add(new CorrectionEdit(match.Offset, match.Length, original, replacement));
+            end = match.Offset + match.Length;
+        }
+        return edits;
+    }
+
+    static bool IsSpeller(string rule) => rule == "GERMAN_SPELLER_RULE" || rule.StartsWith("MORFOLOGIK_RULE_", StringComparison.Ordinal);
+
+    /// <summary>The word-list name policy, so a name or a word of the other language is not "corrected".</summary>
+    bool LooksLikeName(string text, string code, int start, string word, string suggestion)
+    {
+        if (word.Length > 1 && word.Substring(1).Any(char.IsUpper)) return true;
+        if (_wordLists.IsKnown(word)) return true;
+        if (!char.IsUpper(word[0])) return false;
+        if (TextPolicy.FollowsTitle(text, start)) return true;
+        if (TextPolicy.IsSentenceStart(text, start)) return false;
+        // English: a capital inside a sentence is a name. German nouns are capitalised, so only a close fix applies.
+        return code == "en" || !WithinOneEdit(Squash(word), Squash(suggestion));
+    }
+
+    static string Squash(string value) => value.Replace(" ", "", StringComparison.Ordinal).Replace("-", "", StringComparison.Ordinal).ToLowerInvariant();
+
+    /// <summary>True when the strings differ by at most one insertion, deletion, substitution or swap of neighbours.</summary>
+    static bool WithinOneEdit(string a, string b)
+    {
+        if (Math.Abs(a.Length - b.Length) > 1) return false;
+        var i = 0;
+        while (i < a.Length && i < b.Length && a[i] == b[i]) i++;
+        if (a.Length == b.Length)
+        {
+            if (i + 1 < a.Length && a[i] == b[i + 1] && a[i + 1] == b[i] && a.AsSpan(i + 2).SequenceEqual(b.AsSpan(i + 2))) return true;
+            return i >= a.Length || a.AsSpan(i + 1).SequenceEqual(b.AsSpan(i + 1));
+        }
+        return a.Length > b.Length ? a.AsSpan(i + 1).SequenceEqual(b.AsSpan(i)) : a.AsSpan(i).SequenceEqual(b.AsSpan(i + 1));
+    }
+}

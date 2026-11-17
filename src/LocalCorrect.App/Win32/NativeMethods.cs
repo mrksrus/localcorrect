@@ -15,6 +15,17 @@ internal static class NativeMethods
     public const int EmGetPasswordChar = 0x00D2;
     public const uint SmtoAbortIfHung = 0x0002;
     public const int SwRestore = 9;
+    public const int JobObjectExtendedLimitInformation = 9;
+    public const uint JobObjectLimitKillOnJobClose = 0x2000;
+
+    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    public static extern nint CreateJobObject(nint attributes, string? name);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern bool SetInformationJobObject(nint job, int infoClass, ref JOBOBJECT_EXTENDED_LIMIT_INFORMATION info, uint length);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern bool AssignProcessToJobObject(nint job, nint process);
 
     [DllImport("user32.dll", SetLastError = true)]
     public static extern bool OpenClipboard(nint hWndNewOwner);
@@ -175,4 +186,28 @@ internal struct INPUT
 {
     public uint type;
     public INPUTUNION u;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct JOBOBJECT_EXTENDED_LIMIT_INFORMATION
+{
+    public long PerProcessUserTimeLimit;
+    public long PerJobUserTimeLimit;
+    public uint LimitFlags;
+    public nuint MinimumWorkingSetSize;
+    public nuint MaximumWorkingSetSize;
+    public uint ActiveProcessLimit;
+    public nuint Affinity;
+    public uint PriorityClass;
+    public uint SchedulingClass;
+    public ulong ReadOperationCount;
+    public ulong WriteOperationCount;
+    public ulong OtherOperationCount;
+    public ulong ReadTransferCount;
+    public ulong WriteTransferCount;
+    public ulong OtherTransferCount;
+    public nuint ProcessMemoryLimit;
+    public nuint JobMemoryLimit;
+    public nuint PeakProcessMemoryUsed;
+    public nuint PeakJobMemoryUsed;
 }

@@ -16,20 +16,43 @@ public sealed class CorrectionEdit
     public int Length { get; }
     public string Original { get; }
     public string Replacement { get; }
+
+    /// <summary>Applies non-overlapping edits, sorted by offset, to <paramref name="text"/>.</summary>
+    public static string Apply(string text, IReadOnlyList<CorrectionEdit> edits)
+    {
+        var output = new System.Text.StringBuilder(text.Length + 16);
+        var position = 0;
+        foreach (var edit in edits)
+        {
+            output.Append(text, position, edit.Offset - position);
+            output.Append(edit.Replacement);
+            position = edit.Offset + edit.Length;
+        }
+        output.Append(text, position, text.Length - position);
+        return output.ToString();
+    }
 }
 
 public sealed class CorrectionResult
 {
-    public CorrectionResult(string text, string language, IReadOnlyList<CorrectionEdit> edits)
+    public CorrectionResult(string text, string language, IReadOnlyList<CorrectionEdit> edits, string engine = "", string? notice = null)
     {
         Text = text ?? throw new ArgumentNullException(nameof(text));
         Language = language ?? throw new ArgumentNullException(nameof(language));
         Edits = edits ?? throw new ArgumentNullException(nameof(edits));
+        Engine = engine ?? "";
+        Notice = notice;
     }
 
     public string Text { get; }
     public string Language { get; }
     public IReadOnlyList<CorrectionEdit> Edits { get; }
+
+    /// <summary>Id of the engine that produced this result (the word lists when LanguageTool fell back).</summary>
+    public string Engine { get; }
+
+    /// <summary>Something the user should be told, such as "the word lists were used this time". Never contains the text.</summary>
+    public string? Notice { get; }
 }
 
 /// <summary>
