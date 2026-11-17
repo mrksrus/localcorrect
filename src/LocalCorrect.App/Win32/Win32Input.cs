@@ -78,6 +78,8 @@ internal static class KeyboardChord
 internal sealed class Win32SelectionTransport : ISelectionTransport
 {
     public nint Target { get; set; }
+    /// <summary>True once the paragraph keys were sent: nothing was selected, so the preview says "paragraph".</summary>
+    public bool SelectedParagraph { get; set; }
 
     public void Copy()
     {
@@ -97,6 +99,7 @@ internal sealed class Win32SelectionTransport : ISelectionTransport
     {
         // After the preview the target has to get focus back before the keys mean anything.
         WindowFocus.TryRestore(Target);
+        if (keys is SelectKeys.Paragraph or SelectKeys.Line) SelectedParagraph = true;
         if (!KeyboardChord.SendSelect(keys))
             throw new IOException("Could not send the selection keys.");
     }

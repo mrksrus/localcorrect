@@ -25,8 +25,22 @@ jobs:
       - name: Build
         run: dotnet build LocalCorrect.sln -c Release --verbosity minimal
 
+      # The runner's 1024 x 768 screen is too small for the settings window at 150 %.
+      - name: Set the screen size for the window screenshots
+        run: Set-DisplayResolution -Width 1920 -Height 1080 -Force
+
       - name: Test
+        env:
+          LOCALCORRECT_SCREENSHOT_DIR: ${{ github.workspace }}/screenshots
         run: dotnet test LocalCorrect.sln -c Release --no-build --verbosity minimal
+
+      - name: Upload the window screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-screenshots
+          path: screenshots/*.png
+          if-no-files-found: error
 
       - name: Publish self-contained tray app
         run: dotnet publish src/LocalCorrect.App/LocalCorrect.App.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o publish
