@@ -1,6 +1,6 @@
 # LocalCorrect
 
-LocalCorrect is a per-user Windows tray app that corrects English and German spelling in whatever program you are typing in. Select text, press a hotkey, and the selection is replaced. Outlook, a browser, and most other text fields all use the same app. Nothing is sent off the machine.
+LocalCorrect is a per-user Windows tray app that corrects English and German spelling in whatever program you are typing in. Select text, or just put the caret in a paragraph, press a hotkey, and the text is corrected in place. Outlook, a browser, and most other text fields all use the same app. Nothing is sent off the machine.
 
 This replaces the separate Outlook add-in and browser extension with one program. It does not install into Outlook.
 
@@ -27,7 +27,7 @@ The zip is about 210 MB and takes about 280 MB once installed, most of it Langua
 
 Running `LocalCorrect.exe` itself, without installing, also works. Install it if you want it to stay put and to start with Windows.
 
-Remove it with `uninstall.cmd` (or `LocalCorrect.exe --uninstall`). That removes the program, the Start menu shortcut, and the sign-in startup entry. Settings in `%APPDATA%\LocalCorrect` are kept.
+Remove it with `uninstall.cmd` (or `LocalCorrect.exe --uninstall`). That removes the program, the Start menu shortcut, and the sign-in startup entry. Settings in `%APPDATA%\LocalCorrect` are kept. Exit LocalCorrect from its tray icon first; while it runs, its files cannot all be removed.
 
 ## Use
 
@@ -55,7 +55,7 @@ What it leaves alone: names, links, e-mail addresses, code, file names, numbers,
 
 ### Nothing selected: the current paragraph
 
-With nothing selected, LocalCorrect selects the paragraph the caret is in, corrects it like a selection, and pastes it back without its paragraph mark, so the next paragraph keeps its formatting. It never corrects more than that paragraph. It decides that nothing is selected when a copy brings nothing within 0.3 seconds.
+With nothing selected, LocalCorrect selects the paragraph the caret is in, corrects it like a selection, and pastes it back without its paragraph mark, so the next paragraph keeps its formatting. It never corrects more than that paragraph. It decides that nothing is selected when a copy brings nothing within 1.2 seconds, so with nothing selected the correction starts about a second later.
 
 - **Word and Outlook, WordPad-style boxes, Chrome, Edge and other Chromium programs:** the paragraph (Ctrl+Down, Ctrl+Up, Ctrl+Shift+Down).
 - **Firefox:** these keys go to the start and end of the visual line, so only the line on screen is corrected.
