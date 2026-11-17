@@ -35,7 +35,7 @@ internal sealed class SettingsForm : Form
         for (var letter = 'A'; letter <= 'Z'; letter++) _key.Items.Add(letter.ToString());
         for (var function = 1; function <= 12; function++) _key.Items.Add("F" + function.ToString());
         _language.Items.AddRange(new object[] { "Detect automatically", "English", "Deutsch" });
-        _engine.Items.AddRange(new object[] { "Built-in word lists (offline)", "Local model on this computer (Ollama)" });
+        _engine.Items.AddRange(new object[] { "LanguageTool on this computer (recommended)", "Built-in word lists only", "Local model on this computer (Ollama)" });
 
         _ctrl.Checked = current.Hotkey.Ctrl;
         _alt.Checked = current.Hotkey.Alt;
@@ -45,7 +45,7 @@ internal sealed class SettingsForm : Form
         var keyIndex = _key.Items.IndexOf(keyName);
         _key.SelectedIndex = keyIndex >= 0 ? keyIndex : 0;
         _language.SelectedIndex = current.Language switch { "en" => 1, "de" => 2, _ => 0 };
-        _engine.SelectedIndex = current.Engine == "ollama" ? 1 : 0;
+        _engine.SelectedIndex = current.Engine switch { "wordlists" => 1, "ollama" => 2, _ => 0 };
         _endpoint.Text = current.LocalModelEndpoint;
         _model.Text = current.LocalModelName;
         _preview.Checked = current.PreviewBeforeReplace;
@@ -80,7 +80,7 @@ internal sealed class SettingsForm : Form
         AddSpan(table, _logging);
         AddSpan(table, new Label
         {
-            Text = "The built-in engine fixes spelling on this computer. The local model option only talks to an Ollama-compatible server at 127.0.0.1, localhost, or ::1. Leave the preview on when you try it.",
+            Text = "LanguageTool runs on this computer and fixes spelling, grammar and punctuation. It needs about 1 GB of memory and a minute to start; until then, and if it fails, the built-in word lists are used. The local model option only talks to an Ollama-compatible server at 127.0.0.1, localhost, or ::1. Leave the preview on when you try it.",
             AutoSize = true,
             MaximumSize = new Size(470, 0)
         });
@@ -106,7 +106,7 @@ internal sealed class SettingsForm : Form
 
     void UpdateEndpointEnabled()
     {
-        var local = _engine.SelectedIndex == 1;
+        var local = _engine.SelectedIndex == 2;
         _endpoint.Enabled = local;
         _model.Enabled = local;
     }
@@ -126,7 +126,7 @@ internal sealed class SettingsForm : Form
             MessageBox.Show(this, "Choose Ctrl or Alt, plus a letter or a function key. Alt+F4 and the Windows key on its own are not available.", "LocalCorrect", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
-        var engine = _engine.SelectedIndex == 1 ? "ollama" : "symspell";
+        var engine = _engine.SelectedIndex switch { 1 => "wordlists", 2 => "ollama", _ => "languagetool" };
         var endpoint = _endpoint.Text.Trim();
         var model = _model.Text.Trim();
         if (engine == "ollama")

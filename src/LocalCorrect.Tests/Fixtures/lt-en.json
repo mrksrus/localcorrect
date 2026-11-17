@@ -1,0 +1,181 @@
+{
+ "matches": [
+  {
+   "offset": 0,
+   "length": 1,
+   "replacements": [
+    {
+     "value": "I"
+    }
+   ],
+   "rule": {
+    "id": "I_LOWERCASE",
+    "category": {
+     "id": "TYPOS"
+    }
+   }
+  },
+  {
+   "offset": 7,
+   "length": 7,
+   "replacements": [
+    {
+     "value": "receive"
+    },
+    {
+     "value": "relieve"
+    }
+   ],
+   "rule": {
+    "id": "MORFOLOGIK_RULE_EN_US",
+    "category": {
+     "id": "TYPOS"
+    }
+   }
+  },
+  {
+   "offset": 26,
+   "length": 8,
+   "replacements": [
+    {
+     "value": "tomorrow"
+    }
+   ],
+   "rule": {
+    "id": "MORFOLOGIK_RULE_EN_US",
+    "category": {
+     "id": "TYPOS"
+    }
+   }
+  },
+  {
+   "offset": 34,
+   "length": 4,
+   "replacements": [
+    {
+     "value": ", and"
+    }
+   ],
+   "rule": {
+    "id": "COMMA_COMPOUND_SENTENCE",
+    "category": {
+     "id": "PUNCTUATION"
+    }
+   }
+  },
+  {
+   "offset": 47,
+   "length": 4,
+   "replacements": [
+    {
+     "value": "a lot"
+    },
+    {
+     "value": "lot"
+    },
+    {
+     "value": "plot"
+    }
+   ],
+   "rule": {
+    "id": "MORFOLOGIK_RULE_EN_US",
+    "category": {
+     "id": "TYPOS"
+    }
+   }
+  },
+  {
+   "offset": 61,
+   "length": 3,
+   "replacements": [
+    {
+     "value": "It's"
+    }
+   ],
+   "rule": {
+    "id": "IT_IS",
+    "category": {
+     "id": "TYPOS"
+    }
+   }
+  },
+  {
+   "offset": 82,
+   "length": 6,
+   "replacements": [
+    {
+     "value": "Smith"
+    },
+    {
+     "value": "Smythe"
+    },
+    {
+     "value": "Smiths"
+    }
+   ],
+   "rule": {
+    "id": "MORFOLOGIK_RULE_EN_US",
+    "category": {
+     "id": "TYPOS"
+    }
+   }
+  },
+  {
+   "offset": 137,
+   "length": 8,
+   "replacements": [
+    {
+     "value": "verbose"
+    }
+   ],
+   "rule": {
+    "id": "MORFOLOGIK_RULE_EN_US",
+    "category": {
+     "id": "TYPOS"
+    }
+   }
+  },
+  {
+   "offset": 157,
+   "length": 4,
+   "replacements": [
+    {
+     "value": "John"
+    },
+    {
+     "value": "Jon"
+    },
+    {
+     "value": "Josh"
+    }
+   ],
+   "rule": {
+    "id": "MORFOLOGIK_RULE_EN_US",
+    "category": {
+     "id": "TYPOS"
+    }
+   }
+  },
+  {
+   "offset": 214,
+   "length": 3,
+   "replacements": [
+    {
+     "value": "LNE"
+    },
+    {
+     "value": "one"
+    },
+    {
+     "value": "line"
+    }
+   ],
+   "rule": {
+    "id": "MORFOLOGIK_RULE_EN_US",
+    "category": {
+     "id": "TYPOS"
+    }
+   }
+  }
+ ]
+}

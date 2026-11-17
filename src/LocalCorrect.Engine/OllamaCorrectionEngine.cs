@@ -1,17 +1,19 @@
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using LocalCorrect.Core;
 
 namespace LocalCorrect.Engine;
 
 /// <summary>
 /// Optional engine. Posts the selection to an Ollama-compatible /api/generate on this computer only.
-/// It is not used unless the user selects it. The built-in word lists stay the default.
+/// It is not used unless the user selects it. An answer that rewrites the text instead of correcting it is refused.
 /// </summary>
 public sealed class OllamaCorrectionEngine : ICorrectionEngine, IDisposable
 {
     public const string EngineId = "ollama";
+    static readonly Regex Word = new(@"[\p{L}\p{M}\p{N}'’]+", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(2));
     readonly Uri _uri;
     readonly string _model;
     readonly HttpClient _http;
@@ -66,7 +68,9 @@ public sealed class OllamaCorrectionEngine : ICorrectionEngine, IDisposable
         {
             ["model"] = _model,
             ["prompt"] = Prompt(text, language),
-            ["stream"] = false
+            ["stream"] = false,
+            ["keep_alive"] = "30m",
+            ["options"] = new Dictionary<string, object> { ["temperature"] = 0 }
         });
         using var request = new HttpRequestMessage(HttpMethod.Post, _uri)
         {
@@ -110,13 +114,38 @@ public sealed class OllamaCorrectionEngine : ICorrectionEngine, IDisposable
             if (corrected.Length > 100_000)
                 throw new LocalEngineException("The local model returned too much text. Nothing was changed.");
             if (corrected == text)
-                return new CorrectionResult(text, LanguageOf(language), Array.Empty<CorrectionEdit>());
+                return new CorrectionResult(text, LanguageOf(language), Array.Empty<CorrectionEdit>(), EngineId);
+            if (IsRewrite(text, corrected))
+                throw new LocalEngineException("The local model changed too much of the text. Nothing was changed.");
             var edits = new[] { new CorrectionEdit(0, text.Length, text, corrected) };
-            return new CorrectionResult(corrected, LanguageOf(language), edits);
+            return new CorrectionResult(corrected, LanguageOf(language), edits, EngineId);
         }
     }
 
     public void Dispose() => _http.Dispose();
+
+    /// <summary>
+    /// A correction keeps the lines, about the length and nearly all of the words. The length allows 3 characters
+    /// for a short text, so "dont" to "don't" is not refused.
+    /// </summary>
+    public static bool IsRewrite(string text, string corrected)
+    {
+        try
+        {
+            if (Lines(text.Trim()) != Lines(corrected)) return true;
+            if (Math.Abs(corrected.Length - text.Length) > Math.Max(3, text.Length / 5)) return true;
+            var known = new HashSet<string>(Word.Matches(text).Select(match => match.Value), StringComparer.OrdinalIgnoreCase);
+            var words = Word.Matches(corrected);
+            var added = words.Count(match => !known.Contains(match.Value));
+            return added > Math.Max(3, words.Count / 4);
+        }
+        catch (RegexMatchTimeoutException)
+        {
+            return true;
+        }
+    }
+
+    static int Lines(string value) => value.Count(character => character == '\n');
 
     static string Prompt(string text, string? language)
     {

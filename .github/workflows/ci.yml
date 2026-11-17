@@ -43,6 +43,12 @@ jobs:
         shell: bash
         run: build/bundle-languagetool.sh publish --smoke
 
+      - name: LanguageTool integration test (real server through the app's engine)
+        shell: bash
+        env:
+          LOCALCORRECT_BUNDLE_DIR: ${{ github.workspace }}/publish
+        run: dotnet test LocalCorrect.sln -c Release --no-build --filter "FullyQualifiedName~BundleIntegrationTests" --logger "console;verbosity=detailed"
+
       - name: Package zip
         shell: bash
         run: |

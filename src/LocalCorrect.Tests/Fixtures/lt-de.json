@@ -1,0 +1,163 @@
+{
+ "matches": [
+  {
+   "offset": 37,
+   "length": 4,
+   "replacements": [
+    {
+     "value": "Zeit"
+    }
+   ],
+   "rule": {
+    "id": "ZEIT_SEINES_LEBENS",
+    "category": {
+     "id": "CASING"
+    }
+   }
+  },
+  {
+   "offset": 55,
+   "length": 5,
+   "replacements": [
+    {
+     "value": "können"
+    },
+    {
+     "value": "könne"
+    },
+    {
+     "value": "krönen"
+    }
+   ],
+   "rule": {
+    "id": "GERMAN_SPELLER_RULE",
+    "category": {
+     "id": "TYPOS"
+    }
+   }
+  },
+  {
+   "offset": 78,
+   "length": 12,
+   "replacements": [
+    {
+     "value": "Auf jeden Fall"
+    }
+   ],
+   "rule": {
+    "id": "GERMAN_SPELLER_RULE",
+    "category": {
+     "id": "TYPOS"
+    }
+   }
+  },
+  {
+   "offset": 115,
+   "length": 7,
+   "replacements": [
+    {
+     "value": "Müller"
+    },
+    {
+     "value": "Müllers"
+    },
+    {
+     "value": "Mülleuro"
+    }
+   ],
+   "rule": {
+    "id": "GERMAN_SPELLER_RULE",
+    "category": {
+     "id": "TYPOS"
+    }
+   }
+  },
+  {
+   "offset": 138,
+   "length": 3,
+   "replacements": [
+    {
+     "value": "dass"
+    }
+   ],
+   "rule": {
+    "id": "DAS_DASS",
+    "category": {
+     "id": "GRAMMAR"
+    }
+   }
+  },
+  {
+   "offset": 163,
+   "length": 11,
+   "replacements": [
+    {
+     "value": "abschließen"
+    },
+    {
+     "value": "abschließend"
+    },
+    {
+     "value": "abschweißen"
+    }
+   ],
+   "rule": {
+    "id": "GERMAN_SPELLER_RULE",
+    "category": {
+     "id": "TYPOS"
+    }
+   }
+  },
+  {
+   "offset": 180,
+   "length": 4,
+   "replacements": [
+    {
+     "value": "weiß"
+    }
+   ],
+   "rule": {
+    "id": "WEIS_ICH",
+    "category": {
+     "id": "CONFUSED_WORDS"
+    }
+   }
+  },
+  {
+   "offset": 292,
+   "length": 7,
+   "replacements": [
+    {
+     "value": "zitierte"
+    },
+    {
+     "value": "zierte"
+    },
+    {
+     "value": "störte"
+    }
+   ],
+   "rule": {
+    "id": "GERMAN_SPELLER_RULE",
+    "category": {
+     "id": "TYPOS"
+    }
+   }
+  },
+  {
+   "offset": 321,
+   "length": 8,
+   "replacements": [
+    {
+     "value": "Bescheid"
+    }
+   ],
+   "rule": {
+    "id": "GERMAN_SPELLER_RULE",
+    "category": {
+     "id": "TYPOS"
+    }
+   }
+  }
+ ]
+}

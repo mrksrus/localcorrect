@@ -4,15 +4,15 @@ LocalCorrect is a per-user Windows tray app that corrects English and German spe
 
 This replaces the separate Outlook add-in and browser extension with one program. It does not install into Outlook.
 
-**Version 0.2.0-alpha.1.** The release zip also contains [LanguageTool](https://languagetool.org) 6.6 and a Java runtime, which run on this computer only (see [Credits and licences](#credits-and-licences)). The built-in spelling engine is the same word-list corrector as [LocalCorrect for Firefox](https://github.com/mrksrus/localcorrect-browser) version 2 and [LocalCorrect for Outlook](https://github.com/mrksrus/localcorrect-outlook). It fixes typos. It does not fix grammar, and a real word in the wrong place stays as it is.
+**Version 0.2.0-alpha.1.** The release zip also contains [LanguageTool](https://languagetool.org) 6.6 and a Java runtime, which run on this computer only (see [Credits and licences](#credits-and-licences)). LocalCorrect uses LanguageTool by default: it fixes spelling, capitalisation, grammar, punctuation and commonly confused words (`das` / `dass`, `Its` / `It's`), and leaves style suggestions alone. The built-in word lists, the same corrector as [LocalCorrect for Firefox](https://github.com/mrksrus/localcorrect-browser) version 2 and [LocalCorrect for Outlook](https://github.com/mrksrus/localcorrect-outlook), are the instant fallback: they fix typos only.
 
 ## Privacy
 
-The default engine reads word lists that ship inside the program. It does not open a network connection, and it does not have an account or telemetry.
+LocalCorrect starts the bundled LanguageTool server itself, as a separate program that answers only on 127.0.0.1 on a free port, and stops it when you exit. Your text goes to that server over the loopback connection and nowhere else. The built-in word lists ship inside the program and do not open a connection at all. There is no account and no telemetry.
 
-The text you select is not written to the log. The log records only that something happened (for example the outcome, the language, the length, and the program name). The first line of the log is written as the process starts, before settings are loaded, so a startup failure still leaves a trace at `%LOCALAPPDATA%\LocalCorrect\log.txt`.
+The text you select is not written to the log. The log records only that something happened (for example the outcome, the language, the length, the engine that was used, how long it took in milliseconds, and the program name). The first line of the log is written as the process starts, before settings are loaded, so a startup failure still leaves a trace at `%LOCALAPPDATA%\LocalCorrect\log.txt`.
 
-An optional local-model engine can talk to an [Ollama](https://ollama.com)-compatible server. It is off unless you select it. The address must be `127.0.0.1`, `localhost`, or `::1`. Other addresses are rejected before a request is built. The client does not use a proxy and does not follow redirects. Leave the preview on when you try it, because that model is not the one the tests cover.
+An optional local-model engine can talk to an [Ollama](https://ollama.com)-compatible server. It is off unless you select it. The address must be `127.0.0.1`, `localhost`, or `::1`. Other addresses are rejected before a request is built. The client does not use a proxy and does not follow redirects. It asks the model for its most predictable answer (temperature 0) and keeps the model loaded for 30 minutes. An answer that changes the number of lines, the length by more than 20 %, or more than a quarter of the words is refused and nothing is changed. Leave the preview on when you try it, because that model is not the one the tests cover.
 
 ## Install
 
@@ -37,7 +37,15 @@ A small window lists the changes. **Replace** pastes them over the selection. **
 
 The previous clipboard contents are put back afterwards, including formats that are not plain text when Windows exposes them as memory (HTML, RTF, PNG, and similar). A bitmap held only as a GDI handle cannot be snapshotted and is skipped.
 
-What it changes, from the same cases as the Firefox version:
+### LanguageTool (default)
+
+LanguageTool checks English as US English and German as German German; the language is detected per text, or forced in settings. Only spelling, capitalisation, grammar, punctuation and confused-word fixes are applied, always the first suggestion. A suggestion is skipped when it would change a link, an e-mail address, code, a quoted `>` line, a name or a word that is valid in the other language, or the first word of the selection (it may start in the middle of a sentence).
+
+LanguageTool needs a minute or so after LocalCorrect starts before it is ready; the tray menu shows its state. Until then, and whenever it fails, does not answer within 10 seconds, or is not installed, the built-in word lists correct the text at once and the tray tells you. If the server stops it is restarted once; if it stops again within a minute the word lists are used until you change a setting or restart LocalCorrect. To save the memory, choose **Built-in word lists only** in settings; LanguageTool is then stopped.
+
+### Built-in word lists
+
+What they change, from the same cases as the Firefox version:
 
 - `recieve` → `receive`, `teh` → `the`, `Dnak` → `Dank`
 - `fur` → `für`, `ueber` → `über`, `gross` → `groß`
@@ -55,7 +63,7 @@ Stored in `%APPDATA%\LocalCorrect\settings.json`. Open them from the tray icon.
 | --- | --- |
 | Hotkey | Ctrl+Alt+L. Ctrl or Alt is required, plus a letter or F1–F12. |
 | Language | Detect automatically, or force English or German. |
-| Engine | Built-in word lists. Or a local Ollama-compatible model on this computer. |
+| Engine | LanguageTool on this computer. Or the built-in word lists only (no LanguageTool, less memory), or a local Ollama-compatible model on this computer. A 0.1.0 settings file that names the word lists is read as LanguageTool. |
 | Preview | On. Shows the changes and waits for Replace or Cancel. |
 | Exclusions | Process names, one per line (`outlook`, `keepass`). `.exe` is optional. |
 | Start with Windows | Off. Uses the per-user Run key, not an administrator task. |
@@ -63,7 +71,7 @@ Stored in `%APPDATA%\LocalCorrect\settings.json`. Open them from the tray icon.
 
 ## How it is built
 
-`LocalCorrect.Engine` corrects text. `SymSpellCorrector` is the built-in engine. `OllamaCorrectionEngine` is the optional loopback engine. Both implement `ICorrectionEngine`, so a later engine (a local llama.cpp server, or LanguageTool running on this computer) can be added without changing the hotkey.
+`LocalCorrect.Engine` corrects text. `LanguageToolServer` starts, warms up, restarts and stops the bundled server; `LanguageToolEngine` turns its matches into edits and falls back to `SymSpellCorrector`, the built-in word lists. `OllamaCorrectionEngine` is the optional loopback engine. `TextPolicy` holds the protected-text and name rules both LanguageTool and the word lists use. All engines implement `ICorrectionEngine`. On Windows the server runs in a job object, so it ends with LocalCorrect even after a crash.
 
 `LocalCorrect.Core` holds settings, the clipboard save/restore session, and the correction workflow. Those are unit-tested without Windows. `LocalCorrect.App` is the tray: a global hotkey, simulated Ctrl+C / Ctrl+V, a preview window, and the per-user installer.
 
@@ -80,12 +88,13 @@ dotnet publish src/LocalCorrect.App/LocalCorrect.App.csproj -c Release -r win-x6
 
 `build/bundle-languagetool.sh <publish folder> --smoke` adds LanguageTool and the Java runtime to the published folder. It downloads the pinned archives, checks their SHA-256, trims LanguageTool to English and German, builds the runtime with `jlink`, and with `--smoke` starts the bundled server and checks a German and an English sentence. It needs bash, curl and Python 3; on Linux, set `LC_JDK` to a local JDK 17 to test the trim and the server (the Windows runtime can only be built on Windows).
 
-GitHub Actions (`.github/workflows/ci.yml`) builds and tests on `windows-latest`, runs the bundle script with `--smoke`, and uploads `LocalCorrect-<version>-win-x64.zip`. The version comes from `Directory.Build.props`.
+Set `LOCALCORRECT_BUNDLE_DIR` to such a folder and `dotnet test` also runs `BundleIntegrationTests`: it starts the real server through `LanguageToolServer`, corrects the German and English fixtures through `LanguageToolEngine`, prints the start, warm-up and warm check times, and fails if a warm German check takes 5 seconds or more.
+
+GitHub Actions (`.github/workflows/ci.yml`) builds and tests on `windows-latest`, runs the bundle script with `--smoke`, runs the integration test against the bundle, and uploads `LocalCorrect-<version>-win-x64.zip`. The version comes from `Directory.Build.props`.
 
 ## Roadmap
 
 - A stronger local model, behind the same `ICorrectionEngine`, once it beats the word lists on the public cases without inventing text.
-- LanguageTool, or another grammar checker, running on localhost only.
 - Richer preview for long selections.
 - A signed installer.
 - macOS and Linux. The engine and the workflow are plain .NET. The missing pieces are a tray, a global hotkey, and a way to read and replace the selection (Accessibility on macOS, AT-SPI on Linux). Not in this version.

@@ -7,7 +7,7 @@ public sealed class AppSettings
 {
     public HotkeySpec Hotkey { get; set; } = new();
     public string Language { get; set; } = "auto";
-    public string Engine { get; set; } = "symspell";
+    public string Engine { get; set; } = "languagetool";
     public string LocalModelEndpoint { get; set; } = "http://127.0.0.1:11434";
     public string LocalModelName { get; set; } = "llama3.2";
     public bool PreviewBeforeReplace { get; set; } = true;
@@ -37,9 +37,9 @@ public sealed class AppSettings
 
     public static string NormalizeEngine(string? engine)
     {
-        if (string.IsNullOrWhiteSpace(engine)) return "symspell";
-        var value = engine.Trim().ToLowerInvariant();
-        return value is "symspell" or "ollama" ? value : "symspell";
+        // 0.1.0 wrote "symspell" into every settings file; reading it as LanguageTool makes the new default reach existing users.
+        var value = (engine ?? "").Trim().ToLowerInvariant();
+        return value is "wordlists" or "ollama" ? value : "languagetool";
     }
 
     public static List<string> NormalizeExclusions(IEnumerable<string>? names)
