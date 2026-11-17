@@ -85,7 +85,7 @@ public enum SelectKeys
     Line,
     /// <summary>Shift+Left: drops the paragraph mark from the selection.</summary>
     DropLast,
-    /// <summary>Right: collapses the selection to its end.</summary>
+    /// <summary>End: collapses the selection at the end of its last line. Right would move one character on in a classic edit box.</summary>
     Collapse
 }
 

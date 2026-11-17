@@ -2,6 +2,9 @@ using LocalCorrect.App.Win32;
 using LocalCorrect.Core;
 using Xunit;
 
+// The tests share the foreground window and the clipboard.
+[assembly: CollectionBehavior(DisableTestParallelization = true)]
+
 namespace LocalCorrect.App.Tests;
 
 /// <summary>

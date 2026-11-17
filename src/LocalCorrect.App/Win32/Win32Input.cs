@@ -6,7 +6,7 @@ namespace LocalCorrect.App.Win32;
 
 internal static class KeyboardChord
 {
-    const ushort Shift = 0x10, Ctrl = 0x11, End = 0x23, Home = 0x24, Left = 0x25, Up = 0x26, Right = 0x27, Down = 0x28;
+    const ushort Shift = 0x10, Ctrl = 0x11, End = 0x23, Home = 0x24, Left = 0x25, Up = 0x26, Down = 0x28;
 
     public static bool SendCopy() => Send(Chord(Ctrl, 0x43));
     public static bool SendPaste() => Send(Chord(Ctrl, 0x56));
@@ -16,7 +16,7 @@ internal static class KeyboardChord
         SelectKeys.Paragraph => Chord(Ctrl, Down).Concat(Chord(Ctrl, Up)).Concat(Chord(Ctrl, Shift, Down)),
         SelectKeys.Line => Chord(Home).Concat(Chord(Shift, End)),
         SelectKeys.DropLast => Chord(Shift, Left),
-        _ => Chord(Right)
+        _ => Chord(End)
     });
 
     public static int InputSize => Marshal.SizeOf<INPUT>();

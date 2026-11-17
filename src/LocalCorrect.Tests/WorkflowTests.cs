@@ -111,7 +111,8 @@ public class WorkflowTests
                     Caret -= Caret >= 2 && Text[(Caret - 2)..Caret] == "\r\n" ? 2 : 1;
                     break;
                 default:
-                    Anchor = Caret = Math.Max(Anchor, Caret);
+                    var lineEnd = Text.IndexOfAny(new[] { '\r', '\n' }, Caret); // End
+                    Anchor = Caret = lineEnd < 0 ? Text.Length : lineEnd;
                     break;
             }
         });

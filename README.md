@@ -67,7 +67,7 @@ It changes nothing, puts the caret at the end of the paragraph and asks you to s
 - still contains a line break, tab or table cell after the paragraph mark is dropped (for example when Chrome kept the column and the selection reached into the next line);
 - is longer than 5,000 characters.
 
-After "no changes", Cancel in the preview, or an error, the selection is collapsed to the end of the paragraph so your next keystroke does not replace it. Turn the whole fallback off with **When nothing is selected, correct the current paragraph** in settings.
+After "no changes", Cancel in the preview, or an error, the caret is put at the end of the paragraph (End) so your next keystroke does not replace it. Turn the whole fallback off with **When nothing is selected, correct the current paragraph** in settings.
 
 The hotkey does nothing at all in terminals (Windows Terminal, cmd, PowerShell, PuTTY, mintty), code editors (VS Code, Visual Studio, IntelliJ, Sublime Text, Notepad++) and Excel. There Ctrl+C would stop a command, copy a whole line, or a paste would overwrite a cell.
 
