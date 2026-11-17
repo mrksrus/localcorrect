@@ -132,26 +132,33 @@ public sealed class LanguageToolEngine : ICorrectionEngine
     {
         if (word.Length > 1 && word.Substring(1).Any(char.IsUpper)) return true;
         if (_wordLists.IsKnown(word)) return true;
-        if (!char.IsUpper(word[0])) return false;
+        var distance = Distance(Squash(word), Squash(suggestion));
+        // A far-off suggestion is a guess (a name, a tool, a word the speller lacks), not a typo fix.
+        if (!char.IsUpper(word[0])) return distance > 2;
         if (TextPolicy.FollowsTitle(text, start)) return true;
-        if (TextPolicy.IsSentenceStart(text, start)) return false;
+        if (TextPolicy.IsSentenceStart(text, start)) return distance > 2;
         // English: a capital inside a sentence is a name. German nouns are capitalised, so only a close fix applies.
-        return code == "en" || !WithinOneEdit(Squash(word), Squash(suggestion));
+        return code == "en" || distance > 1;
     }
 
     static string Squash(string value) => value.Replace(" ", "", StringComparison.Ordinal).Replace("-", "", StringComparison.Ordinal).ToLowerInvariant();
 
-    /// <summary>True when the strings differ by at most one insertion, deletion, substitution or swap of neighbours.</summary>
-    static bool WithinOneEdit(string a, string b)
+    /// <summary>Edit distance counting insertions, deletions, substitutions and swaps of neighbours.</summary>
+    static int Distance(string a, string b)
     {
-        if (Math.Abs(a.Length - b.Length) > 1) return false;
-        var i = 0;
-        while (i < a.Length && i < b.Length && a[i] == b[i]) i++;
-        if (a.Length == b.Length)
+        var d = new int[a.Length + 1, b.Length + 1];
+        for (var i = 0; i <= a.Length; i++) d[i, 0] = i;
+        for (var j = 0; j <= b.Length; j++) d[0, j] = j;
+        for (var i = 1; i <= a.Length; i++)
         {
-            if (i + 1 < a.Length && a[i] == b[i + 1] && a[i + 1] == b[i] && a.AsSpan(i + 2).SequenceEqual(b.AsSpan(i + 2))) return true;
-            return i >= a.Length || a.AsSpan(i + 1).SequenceEqual(b.AsSpan(i + 1));
+            for (var j = 1; j <= b.Length; j++)
+            {
+                var cost = a[i - 1] == b[j - 1] ? 0 : 1;
+                d[i, j] = Math.Min(Math.Min(d[i - 1, j] + 1, d[i, j - 1] + 1), d[i - 1, j - 1] + cost);
+                if (i > 1 && j > 1 && a[i - 1] == b[j - 2] && a[i - 2] == b[j - 1])
+                    d[i, j] = Math.Min(d[i, j], d[i - 2, j - 2] + 1);
+            }
         }
-        return a.Length > b.Length ? a.AsSpan(i + 1).SequenceEqual(b.AsSpan(i)) : a.AsSpan(i).SequenceEqual(b.AsSpan(i + 1));
+        return d[a.Length, b.Length];
     }
 }

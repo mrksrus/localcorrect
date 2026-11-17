@@ -139,6 +139,21 @@ public class LanguageToolEngineTests
         Assert.Equal("Gestern kam der Briefträger.", Answer("Gestern kam der Briefträgr.", Matches(Match(16, 10, "Briefträger", "GERMAN_SPELLER_RULE")), "de").Text);
     }
 
+    [Fact]
+    public void SpellerSkipsFarOffSuggestions()
+    {
+        // Seen with LanguageTool 6.6: a name at a sentence or line start and lowercase tool names got distant guesses.
+        const string german = "Siobhan, kannst du mir helfen?\r\nViele Grüße\r\nSiobhan Kowalczyk";
+        var lineStart = german.LastIndexOf("Siobhan", StringComparison.Ordinal);
+        Assert.Equal(german, Answer(german, Matches(
+            Match(0, 7, "Stephan", "GERMAN_SPELLER_RULE"),
+            Match(lineStart, 7, "Stephan", "GERMAN_SPELLER_RULE")), "de").Text);
+        const string english = "Run it with kubectl today.";
+        Assert.Equal(english, Answer(english, Matches(Match(12, 7, "subject"))).Text);
+        // Close fixes at a sentence start and in lowercase words still apply.
+        Assert.Equal("Receive it tomorrow.", Answer("Recieve it tommorow.", Matches(Match(0, 7, "Receive"), Match(11, 8, "tomorrow"))).Text);
+    }
+
     [Theory]
     [InlineData(-1, 3)]
     [InlineData(12, 5)]
