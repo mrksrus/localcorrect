@@ -17,7 +17,14 @@ Earlier decisions LC-01 to LC-13 live in the Outlook add-in (`mrksrus/localcorre
 
 ## Observed implementation
 
-0.1.0-alpha.1: .NET 8 WinForms tray app. `SymSpellCorrector` (word lists) is the default engine, `OllamaCorrectionEngine` is optional, both behind `ICorrectionEngine`. Selection is read and replaced through simulated Ctrl+C / Ctrl+V with the clipboard restored. Plain-text paste only.
+0.1.0-alpha.1: .NET 8 WinForms tray app with the word lists as its only offline engine and an optional Ollama engine, behind `ICorrectionEngine`; selection read and replaced through simulated Ctrl+C / Ctrl+V with the clipboard restored; plain-text paste only.
+
+0.2.0-alpha.1:
+- Bundle: `build/bundle-languagetool.sh` (pinned LanguageTool 6.6 and Temurin 17.0.21+9, trimmed to English/German, jlink runtime, jar-licence table check, smoke test) run in CI; zip about 210 MB; `languagetool-server.properties` turns on pipeline caching.
+- Engines: `LanguageToolServer` (port on 127.0.0.1, warm-up of both languages, one restart, job object kill-on-close) and `LanguageToolEngine` (category allow-list, first suggestion, abstention rules, speller suggestions more than two edits away dropped for lowercase words and at sentence starts); word lists are the fallback; Ollama has temperature 0, keep_alive and a rewrite guard.
+- No selection: after a 1.2 s first-copy wait, `NoSelectionPolicy` keys select the paragraph (or line); formatted paragraphs are refused; `ProcessFilter.NeverCorrect` is the W-10 list.
+- UI: the preview shows the text with changes in place (struck through / underlined); settings are two columns of sections that scroll when they do not fit above the taskbar; system font and colours, sizes in font heights.
+- Third-party sources: `third-party-sources` release (W-08) with LanguageTool, Temurin, Hunspell/hunspell-java and the copyleft Maven jars' sources.
 
 ## Open decisions
 

@@ -130,7 +130,7 @@ GitHub Actions (`.github/workflows/ci.yml`) builds and tests on `windows-latest`
 
 ## Credits and licences
 
-LocalCorrect uses [LanguageTool](https://languagetool.org) 6.6, the open-source edition, under the GNU Lesser General Public License 2.1 or later. The dictionaries and data of the other languages are removed; THIRD_PARTY.md lists exactly what is left. It runs as a separate program on this computer and answers only on 127.0.0.1. LanguageTool Premium rules and the LanguageTool cloud service are not used.
+LocalCorrect uses [LanguageTool](https://languagetool.org) 6.6, the open-source edition, under the GNU Lesser General Public License 2.1 or later. The dictionaries and data of the other languages are removed; THIRD_PARTY.md says exactly what was removed. It runs as a separate program on this computer and answers only on 127.0.0.1. LanguageTool Premium rules and the LanguageTool cloud service are not used.
 
 LanguageTool brings its own dictionaries: the German spelling dictionary igerman98 / frami (GPL-2.0 or GPL-3.0), German part-of-speech data (CC BY-SA 4.0), and English spelling and part-of-speech data based on SCOWL, AGID and 12dicts (LGPL-2.1). It also ships about 120 Java libraries, each listed with its version and licence in [licenses/languagetool-libraries.md](licenses/languagetool-libraries.md).
 
