@@ -126,11 +126,14 @@ if [[ $smoke == --smoke ]]; then
   done
   [[ -n $up ]] || { cat "$log"; fail "server did not start"; }
   check() { # language text expected...
-    local lang=$1 text=$2 res; shift 2
-    res=$(curl -fsS --max-time 240 -w '\n%{time_total}' --data-urlencode "language=$lang" \
-      --data-urlencode "text=$text" "http://127.0.0.1:$port/v2/check") || { cat "$log"; fail "$lang check failed"; }
+    local lang=$1 res; shift
+    # The text goes through a UTF-8 file: Windows would re-encode a command-line argument to curl.exe.
+    printf '%s' "$1" > "$cache/smoke-text.txt"; shift
+    res=$(cd "$cache" && curl -fsS --max-time 240 -w '\n%{time_total}' --data-urlencode "language=$lang" \
+      --data-urlencode "text@smoke-text.txt" "http://127.0.0.1:$port/v2/check") \
+      || { cat "$log"; fail "$lang check failed"; }
     for want in "$@"; do
-      grep -q "\"value\":\"$want\"" <<<"$res" || { echo "$res"; fail "$lang: no suggestion \"$want\""; }
+      [[ $res == *"\"value\":\"$want\""* ]] || { echo "$res"; fail "$lang: no suggestion \"$want\""; }
     done
     echo "bundle: $lang corrected in ${res##*$'\n'} s"
   }

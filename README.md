@@ -4,7 +4,7 @@ LocalCorrect is a per-user Windows tray app that corrects English and German spe
 
 This replaces the separate Outlook add-in and browser extension with one program. It does not install into Outlook.
 
-**Version 0.1.0-alpha.1.** The spelling engine is the same word-list corrector as [LocalCorrect for Firefox](https://github.com/mrksrus/localcorrect-browser) version 2 and [LocalCorrect for Outlook](https://github.com/mrksrus/localcorrect-outlook). It fixes typos. It does not fix grammar, and a real word in the wrong place stays as it is.
+**Version 0.2.0-alpha.1.** The release zip also contains [LanguageTool](https://languagetool.org) 6.6 and a Java runtime, which run on this computer only (see [Credits and licences](#credits-and-licences)). The built-in spelling engine is the same word-list corrector as [LocalCorrect for Firefox](https://github.com/mrksrus/localcorrect-browser) version 2 and [LocalCorrect for Outlook](https://github.com/mrksrus/localcorrect-outlook). It fixes typos. It does not fix grammar, and a real word in the wrong place stays as it is.
 
 ## Privacy
 
@@ -18,9 +18,11 @@ An optional local-model engine can talk to an [Ollama](https://ollama.com)-compa
 
 Windows 10 or Windows 11, 64-bit. No administrator account. The published program includes its own .NET runtime.
 
-1. Download `LocalCorrect-0.1.0-alpha.1-win-x64.zip` from the [releases](https://github.com/mrksrus/localcorrect/releases) page and unzip it.
+The zip is about 215 MB and takes about 280 MB once installed, most of it LanguageTool (about 155 MB) and its Java runtime (about 55 MB). While LanguageTool runs it uses about 1 GB of memory.
+
+1. Download `LocalCorrect-0.2.0-alpha.1-win-x64.zip` from the [releases](https://github.com/mrksrus/localcorrect/releases) page and unzip it.
 2. The program is unsigned, so SmartScreen may say it is unrecognized. Choose **More info**, then **Run anyway**.
-3. Double-click `install.cmd`. That copies LocalCorrect to `%LOCALAPPDATA%\LocalCorrect\app` and adds a Start menu shortcut. You can also run `LocalCorrect.exe --install`.
+3. Double-click `install.cmd`. That copies LocalCorrect to `%LOCALAPPDATA%\LocalCorrect\app` and adds a Start menu shortcut. Installing over an older version replaces the `languagetool`, `jre` and `licenses` folders completely. You can also run `LocalCorrect.exe --install`.
 4. A tray icon appears. Right-click it for settings, pause, the log, and exit.
 
 Running `LocalCorrect.exe` itself, without installing, also works. Install it if you want it to stay put and to start with Windows.
@@ -76,7 +78,9 @@ dotnet test LocalCorrect.sln -c Release
 dotnet publish src/LocalCorrect.App/LocalCorrect.App.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o publish
 ```
 
-GitHub Actions (`.github/workflows/ci.yml`) runs the tests on `windows-latest` and uploads `LocalCorrect-0.1.0-alpha.1-win-x64.zip`.
+`build/bundle-languagetool.sh <publish folder> --smoke` adds LanguageTool and the Java runtime to the published folder. It downloads the pinned archives, checks their SHA-256, trims LanguageTool to English and German, builds the runtime with `jlink`, and with `--smoke` starts the bundled server and checks a German and an English sentence. It needs bash, curl and Python 3; on Linux, set `LC_JDK` to a local JDK 17 to test the trim and the server (the Windows runtime can only be built on Windows).
+
+GitHub Actions (`.github/workflows/ci.yml`) builds and tests on `windows-latest`, runs the bundle script with `--smoke`, and uploads `LocalCorrect-<version>-win-x64.zip`. The version comes from `Directory.Build.props`.
 
 ## Roadmap
 
@@ -97,8 +101,18 @@ GitHub Actions (`.github/workflows/ci.yml`) runs the tests on `windows-latest` a
 - The clipboard is borrowed for a moment. If another program needs it during that moment, that program waits or fails, and LocalCorrect then puts back what was there.
 - This alpha has not been exercised inside a live copy of Outlook 2019. The automated tests cover the engine and the clipboard session, not the Outlook window.
 
-## License
+## Credits and licences
+
+LocalCorrect uses [LanguageTool](https://languagetool.org) 6.6, the open-source edition, under the GNU Lesser General Public License 2.1 or later. Only its English and German parts are included. It runs as a separate program on this computer and answers only on 127.0.0.1. LanguageTool Premium rules and the LanguageTool cloud service are not used.
+
+LanguageTool brings its own dictionaries: the German spelling dictionary igerman98 / frami (GPL-2.0 or GPL-3.0), German part-of-speech data (CC BY-SA 4.0), and English spelling and part-of-speech data based on SCOWL, AGID and 12dicts (LGPL-2.1). It also ships about 120 Java libraries, each listed with its version and licence in [licenses/languagetool-libraries.md](licenses/languagetool-libraries.md).
+
+The Java runtime is [Eclipse Temurin](https://adoptium.net) 17.0.21+9 (GPL-2.0 with the Classpath Exception), reduced to the modules LanguageTool needs. The program itself runs on .NET 8 and Windows Forms (MIT), included in `LocalCorrect.exe`. The built-in word lists use FrequencyWords (CC BY-SA 4.0), SCOWL and igerman98.
+
+[THIRD_PARTY.md](THIRD_PARTY.md) names every component with its version, licence, source and place in the package, says exactly what was removed from LanguageTool, and links the source code. The licence texts are in the `licenses` folder, in `languagetool` and in `jre\legal`.
+
+LanguageTool is a trademark of LanguageTooler GmbH. Eclipse Temurin is a trademark of the Eclipse Foundation. Java and OpenJDK are trademarks of Oracle and/or its affiliates. LocalCorrect is not affiliated with or endorsed by any of them.
+
+**Replacing LanguageTool or Java.** The LanguageTool jars and the Java runtime are unmodified and can be replaced. Exit LocalCorrect from the tray, then, in `%LOCALAPPDATA%\LocalCorrect\app`, replace any jar in `languagetool\libs`, the whole `languagetool` folder (another LanguageTool build with `languagetool-server.jar` at the top), or the whole `jre` folder (any Java 17 or later runtime with `bin\java.exe`). The server is started as `jre\bin\java.exe -cp languagetool-server.jar org.languagetool.server.HTTPServer` from inside the `languagetool` folder, with `languagetool-server.properties` as its configuration. Installing LocalCorrect again puts the bundled versions back.
 
 Program: [MIT](LICENSE), copyright Sam Markus Rus.
-
-Word lists: see [THIRD_PARTY.md](THIRD_PARTY.md). Frequency data is CC BY-SA 4.0. German word validity comes from igerman98 (GPL-2.0-or-later). English word validity comes from SCOWL.
