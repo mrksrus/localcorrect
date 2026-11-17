@@ -181,7 +181,7 @@ internal sealed class TrayController : ApplicationContext
         catch (Exception ex)
         {
             FileLog.Write(_logPath, true, "error", "settings " + ex.GetType().Name);
-            Balloon("The settings could not be saved, so nothing was changed.", problem: true);
+            Balloon("The settings could not be saved.", problem: true);
             return;
         }
         ApplyEngine();

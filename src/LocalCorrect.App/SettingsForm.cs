@@ -134,6 +134,18 @@ internal sealed class SettingsForm : Form
         Controls.Add(root);
     }
 
+    protected override void OnLoad(EventArgs e)
+    {
+        base.OnLoad(e);
+        // At a large text size on a small screen the window would reach under the taskbar and hide Save; scroll instead.
+        var area = Screen.FromControl(this).WorkingArea;
+        if (Height <= area.Height && Width <= area.Width) return;
+        AutoSize = false;
+        AutoScroll = true;
+        Size = new Size(Math.Min(Width + SystemInformation.VerticalScrollBarWidth, area.Width), Math.Min(Height, area.Height));
+        Location = new Point(area.Left + (area.Width - Width) / 2, area.Top + (area.Height - Height) / 2);
+    }
+
     /// <summary>The LanguageTool line in About; the tray updates it while the window is open.</summary>
     public void ShowLanguageToolState(string state) => _languageTool.Text = state;
 

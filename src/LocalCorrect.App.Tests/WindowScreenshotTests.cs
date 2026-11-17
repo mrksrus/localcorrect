@@ -66,6 +66,23 @@ public class WindowScreenshotTests
         }
     });
 
+    [Fact]
+    public void SettingsScrollWhenTheyDoNotFitAboveTheTaskbar() => OnStaThread(() =>
+    {
+        Application.EnableVisualStyles();
+        Ui.Scale = 2f; // taller than the 1080-pixel runner screen
+        try
+        {
+            using var form = new SettingsForm(new AppSettings(), "LanguageTool is ready");
+            Capture(form, "settings-200-simulated-scrolls");
+            Assert.True(form.AutoScroll, "the window should scroll instead of growing past the screen");
+        }
+        finally
+        {
+            Ui.Scale = 1f;
+        }
+    });
+
     /// <summary>One edit per pair, at the first whole-word place after the previous one.</summary>
     static CorrectionEdit[] Edits(string text, params (string Wrong, string Right)[] pairs)
     {
@@ -93,7 +110,8 @@ public class WindowScreenshotTests
             for (var until = Environment.TickCount64 + 800; Environment.TickCount64 < until; Thread.Sleep(20)) Application.DoEvents();
 
             var screen = Screen.FromControl(form).Bounds;
-            Assert.True(form.Width <= screen.Width && form.Height <= screen.Height, name + ": the window " + form.Size + " is larger than the screen " + screen.Size);
+            var area = Screen.FromControl(form).WorkingArea;
+            Assert.True(area.Contains(form.Bounds), name + ": the window " + form.Bounds + " is not inside the space above the taskbar " + area);
             AssertNothingIsCut(form, name);
 
             var directory = Environment.GetEnvironmentVariable("LOCALCORRECT_SCREENSHOT_DIR");
@@ -114,7 +132,9 @@ public class WindowScreenshotTests
         {
             if (!child.Visible) continue;
             var what = window + ": " + child.GetType().Name + " \"" + child.Text + "\" " + child.Bounds;
-            Assert.True(parent.ClientRectangle.Contains(child.Bounds), what + " does not fit in its " + parent.GetType().Name + " " + parent.ClientSize);
+            // A scrolling window may hold more than it shows.
+            if (parent is not ScrollableControl { AutoScroll: true })
+                Assert.True(parent.ClientRectangle.Contains(child.Bounds), what + " does not fit in its " + parent.GetType().Name + " " + parent.ClientSize);
             if (child is Label or ButtonBase)
                 Assert.True(child.PreferredSize.Width <= child.Width && child.PreferredSize.Height <= child.Height, what + " needs " + child.PreferredSize);
             if (child is ComboBox or TextBoxBase)
