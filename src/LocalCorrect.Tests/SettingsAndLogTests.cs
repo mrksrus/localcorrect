@@ -71,6 +71,7 @@ public class SettingsAndLogTests
             LocalModelEndpoint = "http://127.0.0.1:11434",
             LocalModelName = "llama3.2",
             PreviewBeforeReplace = false,
+            CorrectParagraphWhenNothingSelected = false,
             ExcludedProcesses = new List<string> { "Outlook.exe", "outlook", "  keepass  " },
             StartWithWindows = true,
             Logging = true
@@ -81,6 +82,8 @@ public class SettingsAndLogTests
         Assert.Equal("de", loaded.Language);
         Assert.Equal("ollama", loaded.Engine);
         Assert.False(loaded.PreviewBeforeReplace);
+        Assert.False(loaded.CorrectParagraphWhenNothingSelected);
+        Assert.False(loaded.Clone().CorrectParagraphWhenNothingSelected);
         Assert.True(loaded.StartWithWindows);
         Assert.True(loaded.Logging);
         Assert.Equal(new[] { "Outlook", "keepass" }, loaded.ExcludedProcesses);
@@ -88,6 +91,7 @@ public class SettingsAndLogTests
         File.WriteAllText(path, "{ this is not json");
         var fallback = SettingsStore.Load(path);
         Assert.Equal("auto", fallback.Language);
+        Assert.True(fallback.CorrectParagraphWhenNothingSelected);
         Assert.Equal("Ctrl+Alt+L", fallback.Hotkey.Display);
         Assert.Equal("languagetool", SettingsStore.Load(path + ".missing").Engine);
     }

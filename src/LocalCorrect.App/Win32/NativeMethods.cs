@@ -11,6 +11,7 @@ internal static class NativeMethods
     public const int WmHotkey = 0x0312;
     public const uint ModNorepeat = 0x4000;
     public const uint InputKeyboard = 1;
+    public const uint KeyeventfExtendedkey = 0x0001;
     public const uint KeyeventfKeyup = 0x0002;
     public const int EmGetPasswordChar = 0x00D2;
     public const uint SmtoAbortIfHung = 0x0002;
@@ -71,6 +72,15 @@ internal static class NativeMethods
 
     [DllImport("user32.dll", SetLastError = true)]
     public static extern uint SendInput(uint count, INPUT[] inputs, int size);
+
+    [DllImport("user32.dll")]
+    public static extern short GetAsyncKeyState(int virtualKey);
+
+    [DllImport("user32.dll")]
+    public static extern uint MapVirtualKey(uint code, uint mapType);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    public static extern uint RegisterClipboardFormat(string format);
 
     [DllImport("user32.dll")]
     public static extern nint GetForegroundWindow();

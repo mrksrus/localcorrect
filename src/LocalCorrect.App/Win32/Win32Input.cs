@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using LocalCorrect.Core;
 
@@ -5,22 +6,47 @@ namespace LocalCorrect.App.Win32;
 
 internal static class KeyboardChord
 {
-    public static bool SendCopy() => Send(0x43);
-    public static bool SendPaste() => Send(0x56);
+    const ushort Shift = 0x10, Ctrl = 0x11, End = 0x23, Home = 0x24, Left = 0x25, Up = 0x26, Right = 0x27, Down = 0x28;
+
+    public static bool SendCopy() => Send(Chord(Ctrl, 0x43));
+    public static bool SendPaste() => Send(Chord(Ctrl, 0x56));
+
+    public static bool SendSelect(SelectKeys keys) => Send(keys switch
+    {
+        SelectKeys.Paragraph => Chord(Ctrl, Down).Concat(Chord(Ctrl, Up)).Concat(Chord(Ctrl, Shift, Down)),
+        SelectKeys.Line => Chord(Home).Concat(Chord(Shift, End)),
+        SelectKeys.DropLast => Chord(Shift, Left),
+        _ => Chord(Right)
+    });
 
     public static int InputSize => Marshal.SizeOf<INPUT>();
 
-    static bool Send(ushort virtualKey)
+    /// <summary>
+    /// Waits until the hotkey's keys are physically up, so a held letter does not auto-repeat into the target
+    /// once the app's own key-ups have cleared the modifiers. False after the timeout.
+    /// </summary>
+    public static bool WaitForRelease(HotkeySpec hotkey, int timeoutMilliseconds)
+    {
+        VirtualKeys.TryGet(hotkey.Key, out var key);
+        int[] keys = { key, 0x10, 0x11, 0x12, 0x5B, 0x5C };
+        var clock = Stopwatch.StartNew();
+        while (keys.Any(k => k != 0 && (NativeMethods.GetAsyncKeyState(k) & 0x8000) != 0))
+        {
+            if (clock.ElapsedMilliseconds >= timeoutMilliseconds) return false;
+            Thread.Sleep(10);
+        }
+        return true;
+    }
+
+    /// <summary>Presses the keys in order and releases them in reverse.</summary>
+    static IEnumerable<INPUT> Chord(params ushort[] keys) =>
+        keys.Select(k => Key(k, up: false)).Concat(keys.Reverse().Select(k => Key(k, up: true)));
+
+    static bool Send(IEnumerable<INPUT> sequence)
     {
         ReleaseModifiers();
         Thread.Sleep(30);
-        var inputs = new[]
-        {
-            Key(0x11, up: false),
-            Key(virtualKey, up: false),
-            Key(virtualKey, up: true),
-            Key(0x11, up: true)
-        };
+        var inputs = sequence.ToArray();
         return NativeMethods.SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>()) == inputs.Length;
     }
 
@@ -41,7 +67,9 @@ internal static class KeyboardChord
             ki = new KEYBDINPUT
             {
                 wVk = virtualKey,
-                dwFlags = up ? NativeMethods.KeyeventfKeyup : 0
+                wScan = (ushort)NativeMethods.MapVirtualKey(virtualKey, 0),
+                // Without the extended flag Windows reads arrows, Home and End as number-pad keys and drops the Shift.
+                dwFlags = (up ? NativeMethods.KeyeventfKeyup : 0) | (virtualKey is >= End and <= Down ? NativeMethods.KeyeventfExtendedkey : 0)
             }
         }
     };
@@ -63,6 +91,14 @@ internal sealed class Win32SelectionTransport : ISelectionTransport
         Thread.Sleep(40);
         if (!KeyboardChord.SendPaste())
             throw new IOException("Could not send Ctrl+V.");
+    }
+
+    public void Select(SelectKeys keys)
+    {
+        // After the preview the target has to get focus back before the keys mean anything.
+        WindowFocus.TryRestore(Target);
+        if (!KeyboardChord.SendSelect(keys))
+            throw new IOException("Could not send the selection keys.");
     }
 }
 

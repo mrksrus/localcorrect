@@ -76,10 +76,24 @@ public interface IClipboardAccess
     void WriteAll(IReadOnlyList<ClipboardEntry> entries);
 }
 
+/// <summary>Key sequences the no-selection fallback sends to the focused editor.</summary>
+public enum SelectKeys
+{
+    /// <summary>Ctrl+Down, Ctrl+Up, Ctrl+Shift+Down: the paragraph and its end mark.</summary>
+    Paragraph,
+    /// <summary>Home, Shift+End: the line.</summary>
+    Line,
+    /// <summary>Shift+Left: drops the paragraph mark from the selection.</summary>
+    DropLast,
+    /// <summary>Right: collapses the selection to its end.</summary>
+    Collapse
+}
+
 public interface ISelectionTransport
 {
     void Copy();
     void Paste();
+    void Select(SelectKeys keys);
 }
 
 public sealed class ClipboardBusyException : Exception

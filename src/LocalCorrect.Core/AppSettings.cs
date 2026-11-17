@@ -11,6 +11,7 @@ public sealed class AppSettings
     public string LocalModelEndpoint { get; set; } = "http://127.0.0.1:11434";
     public string LocalModelName { get; set; } = "llama3.2";
     public bool PreviewBeforeReplace { get; set; } = true;
+    public bool CorrectParagraphWhenNothingSelected { get; set; } = true;
     public List<string> ExcludedProcesses { get; set; } = new();
     public bool StartWithWindows { get; set; }
     public bool Logging { get; set; }
@@ -23,6 +24,7 @@ public sealed class AppSettings
         LocalModelEndpoint = LocalModelEndpoint,
         LocalModelName = LocalModelName,
         PreviewBeforeReplace = PreviewBeforeReplace,
+        CorrectParagraphWhenNothingSelected = CorrectParagraphWhenNothingSelected,
         ExcludedProcesses = new List<string>(ExcludedProcesses),
         StartWithWindows = StartWithWindows,
         Logging = Logging
@@ -101,6 +103,7 @@ public static class SettingsStore
         public string? LocalModelEndpoint { get; set; }
         public string? LocalModelName { get; set; }
         public bool? PreviewBeforeReplace { get; set; }
+        public bool? CorrectParagraphWhenNothingSelected { get; set; }
         public List<string>? ExcludedProcesses { get; set; }
         public bool? StartWithWindows { get; set; }
         public bool? Logging { get; set; }
@@ -125,6 +128,7 @@ public static class SettingsStore
             if (!string.IsNullOrWhiteSpace(LocalModelEndpoint)) settings.LocalModelEndpoint = LocalModelEndpoint.Trim();
             if (!string.IsNullOrWhiteSpace(LocalModelName)) settings.LocalModelName = LocalModelName.Trim();
             if (PreviewBeforeReplace.HasValue) settings.PreviewBeforeReplace = PreviewBeforeReplace.Value;
+            if (CorrectParagraphWhenNothingSelected.HasValue) settings.CorrectParagraphWhenNothingSelected = CorrectParagraphWhenNothingSelected.Value;
             settings.ExcludedProcesses = AppSettings.NormalizeExclusions(ExcludedProcesses);
             if (StartWithWindows.HasValue) settings.StartWithWindows = StartWithWindows.Value;
             if (Logging.HasValue) settings.Logging = Logging.Value;
@@ -146,6 +150,7 @@ public static class SettingsStore
             LocalModelEndpoint = settings.LocalModelEndpoint,
             LocalModelName = settings.LocalModelName,
             PreviewBeforeReplace = settings.PreviewBeforeReplace,
+            CorrectParagraphWhenNothingSelected = settings.CorrectParagraphWhenNothingSelected,
             ExcludedProcesses = AppSettings.NormalizeExclusions(settings.ExcludedProcesses),
             StartWithWindows = settings.StartWithWindows,
             Logging = settings.Logging

@@ -2,6 +2,17 @@ namespace LocalCorrect.Core;
 
 public static class ProcessFilter
 {
+    /// <summary>
+    /// Terminals (Ctrl+C interrupts a command), code editors (Ctrl+C with nothing selected copies the line)
+    /// and Excel (a paste overwrites the cell): the hotkey sends no keys there at all.
+    /// </summary>
+    public static readonly string[] NeverCorrect =
+    {
+        "WindowsTerminal", "cmd", "powershell", "pwsh", "conhost", "putty", "mintty",
+        "Code", "devenv", "idea64", "sublime_text", "notepad++",
+        "excel"
+    };
+
     public static bool IsExcluded(string? processName, IReadOnlyList<string>? excluded)
     {
         if (excluded == null || excluded.Count == 0) return false;
