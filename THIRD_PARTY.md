@@ -10,7 +10,7 @@ their own licences. Everything below is shipped unmodified; where something was 
 | --- | --- | --- | --- | --- |
 | [LanguageTool](https://languagetool.org) (open-source edition: server, core, English and German rules) | 6.6, build `f3e8d91` (2025-03-27) | LGPL-2.1-or-later | [`languagetool-org/languagetool`](https://github.com/languagetool-org/languagetool/tree/v6.6), tag `v6.6` | `languagetool\` (licence: `languagetool\COPYING.txt`) |
 | LanguageTool's Java libraries (125 jars, including LanguageTool's own) | see the table | Apache-2.0, BSD, MIT, EPL-1.0/LGPL, CDDL/GPL with Classpath Exception and others, per jar | Maven Central, coordinates per jar | `languagetool\libs\`, listed in [`licenses/languagetool-libraries.md`](licenses/languagetool-libraries.md) |
-| [Hunspell](https://hunspell.github.io) spell-checking library, native builds inside the `hunspell-java` wrapper (the wrapper itself is Apache-2.0) | as built into `com.gitlab.dumonts:hunspell` 2.1.2 | MPL-1.1 / GPL-2.0-or-later / LGPL-2.1-or-later, used here under LGPL-2.1-or-later | [`hunspell/hunspell`](https://github.com/hunspell/hunspell); wrapper and build: [`dumonts/hunspell-java`](https://gitlab.com/dumonts/hunspell-java) | `languagetool\libs\hunspell.jar` (e.g. `win32-x86-64/hunspell.dll`; `licenses\LGPL-2.1-only.txt`) |
+| [Hunspell](https://hunspell.github.io) spell-checking library, native builds inside the `hunspell-java` wrapper (the wrapper itself is Apache-2.0) | 1.7.1, as built into `com.gitlab.dumonts:hunspell` 2.1.2 | MPL-1.1 / GPL-2.0-or-later / LGPL-2.1-or-later, used here under LGPL-2.1-or-later | [`hunspell/hunspell`](https://github.com/hunspell/hunspell); wrapper and build: [`dumonts/hunspell-java`](https://gitlab.com/dumonts/hunspell-java) | `languagetool\libs\hunspell.jar` (e.g. `win32-x86-64/hunspell.dll`; `licenses\LGPL-2.1-only.txt`) |
 | German spelling dictionary (igerman98 by Björn Jacke, frami extension by Franz Michael Baumann), with Jan Schreiber's German word list (public domain) | as in LanguageTool 6.6 | GPL-2.0 or GPL-3.0 | [igerman98](https://www.j3e.de/ispell/igerman98/), [germandict](https://sourceforge.net/projects/germandict/) | `languagetool\org\languagetool\resource\de\hunspell\` (`COPYING_GPLv2.txt`, `COPYING_GPLv3.txt`, `de_DE_frami_README.txt`, `de_DE.README`) |
 | German part-of-speech data (Morphy, with additions by Julian von Heyl) | `german-pos-dict` 1.2.4 | CC-BY-SA-4.0 | [`languagetool-org/german-pos-dict`](https://github.com/languagetool-org/german-pos-dict) | `languagetool\libs\german-pos-dict.jar` (`licenses\CC-BY-SA-4.0.txt`) |
 | English spelling and part-of-speech dictionaries (from SCOWL, AGID, 12dicts and the Moby part-of-speech list by Kevin Atkinson and others) | `english-pos-dict` 0.6 | LGPL-2.1; notices of the word sources inside | [`languagetool-org/english-pos-dict`](https://github.com/languagetool-org/english-pos-dict) | `languagetool\libs\english-pos-dict.jar`; notices in `languagetool\org\languagetool\resource\en\` (`agid-readme.txt`, `12dicts-readme.html`, `pos-readme.txt`) |
@@ -64,13 +64,19 @@ Maven coordinates and SHA-256.
 - LanguageTool 6.6: <https://github.com/languagetool-org/languagetool/tree/v6.6> (tag `v6.6`). The binary reports
   build `f3e8d91` (<https://github.com/languagetool-org/languagetool/tree/f3e8d914cc33e5106b3d096819e6a7f82b79f6f6>);
   the tag is the next commit, which changes only version numbers and release scripts.
-- Eclipse Temurin 17.0.21+9: <https://github.com/adoptium/jdk17u/tree/jdk-17.0.21+9> (tag `jdk-17.0.21+9`),
-  built by Adoptium from OpenJDK 17 (<https://github.com/openjdk/jdk17u>).
+- Eclipse Temurin 17.0.21+9: <https://github.com/adoptium/jdk17u/tree/jdk-17.0.21+9_adopt> (tag
+  `jdk-17.0.21+9_adopt`, the tag Adoptium builds this release from), based on OpenJDK 17
+  (<https://github.com/openjdk/jdk17u>).
 - The dictionaries and libraries: the projects linked in the tables above and in `licenses/languagetool-libraries.md`.
 
-The source archives of LanguageTool 6.6 and Eclipse Temurin 17.0.21+9 are also kept in the
-[`third-party-sources`](https://github.com/mrksrus/localcorrect/releases/tag/third-party-sources) release of this
-repository.
+The [`third-party-sources`](https://github.com/mrksrus/localcorrect/releases/tag/third-party-sources) release of
+this repository keeps the source archives of the bundled copyleft components, with their SHA-256 in `SHA256SUMS`:
+LanguageTool 6.6 (tag `v6.6`, including the German dictionary sources); Eclipse Temurin 17.0.21+9 (Adoptium's own
+source archive, tag `jdk-17.0.21+9_adopt`); Hunspell 1.7.1 (tag `v1.7.1`) with the `hunspell-java` 2.1.2 wrapper
+(its sources jar and the repository at commit `3115c92`, which holds the same native libraries and the build
+scripts); `english-pos-dict` 0.6 (commit `2c68994`); and the Maven Central sources jars of
+`mariadb-java-client` 3.4.1, `openregex` 1.1.1, `logback-core` and `logback-classic` 1.5.8, `jaxb-api` 2.3.1,
+`jaxb-core` 2.3.0.1, `javax.activation-api` 1.2.0 and `javax.annotation-api` 1.3.2.
 
 ## Built-in word lists
 
