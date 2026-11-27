@@ -126,6 +126,15 @@ public class SymSpellLexiconTests
     }
 
     [Fact]
+    public void TwoLeadingCapitalsAreASlipButOtherInnerCapitalsAreNames()
+    {
+        Assert.Equal("The cat sat. I said Hello.", Shared.Correct("THe cat sat. I said HEllo.", "en").Text);
+        Assert.Equal("Danke, wir haben das Problem gelöst.", Shared.Correct("DAnke, wir haben das PRoblem gelöst.", "de").Text);
+        foreach (var input in new[] { "Our IDs and PCs are fine.", "My iPhone at McDonald was ABCd." })
+            Assert.Equal(input, Shared.Correct(input, "en").Text);
+    }
+
+    [Fact]
     public void WindowsNewlinesStayPut()
     {
         Assert.Equal("the\r\ncat", Shared.Correct("teh\r\ncat", "en").Text);

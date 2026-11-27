@@ -46,6 +46,20 @@ public class BundleIntegrationTests
             // Catches a lost pipeline cache (2 to 3 s per German request plus the rest), not the 1 s goal.
             if (name == "de") Assert.All(timings, t => Assert.True(t < 5, $"warm German check took {t:0.00} s"));
         }
+
+        // Two leading capitals (0.3.0): what the real server flags and suggests, logged before it is checked.
+        foreach (var (language, text, expected) in new[]
+        {
+            ("en", "THe meeting is at noon. I said HEllo to the team.", "The meeting is at noon. I said Hello to the team."),
+            ("de", "DAnke für die Hilfe. Wir haben das PRoblem gelöst.", "Danke für die Hilfe. Wir haben das Problem gelöst.")
+        })
+        {
+            var result = engine.Correct(text, language);
+            Log($"{language} two capitals: engine {result.Engine}; edits: {string.Join(", ", result.Edits.Select(e => e.Original + " -> " + e.Replacement))}; "
+                + $"doubts: {string.Join(", ", result.Doubts.Select(d => d.Original + " ? " + string.Join("/", d.Suggestions)))}");
+            Assert.Equal(LanguageToolEngine.EngineId, result.Engine);
+            Assert.Equal(expected, result.Text);
+        }
     }
 
     void Log(string line)

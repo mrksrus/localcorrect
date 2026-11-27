@@ -34,7 +34,8 @@ public sealed class WorkflowResult
     public string? Language { get; }
 }
 
-public delegate bool PreviewDecision(string original, string corrected, IReadOnlyList<CorrectionEdit> edits);
+/// <summary>Shows the correction and returns the text to paste, or null when the user cancels.</summary>
+public delegate string? PreviewDecision(string original, CorrectionResult correction);
 
 public sealed class CorrectionRequest
 {
@@ -206,22 +207,26 @@ public sealed class CorrectionWorkflow
             return new WorkflowResult(WorkflowStatus.Failed, "Correction failed. Nothing was changed.", text.Length);
         }
 
-        if (correction.Edits.Count == 0 || correction.Text == text)
+        var corrected = correction.Edits.Count > 0 && correction.Text != text;
+        // Doubts are only ever shown in the preview, and nothing unsure is pasted unless the user picks it (W-11).
+        if (!corrected && !(request.Preview && correction.Doubts.Count > 0))
             return new WorkflowResult(WorkflowStatus.Unchanged, "No spelling changes.", text.Length, 0, correction.Language);
 
+        var paste = correction.Text;
         if (request.Preview)
         {
-            var accepted = false;
+            string? chosen;
             try
             {
-                accepted = preview != null && preview(text, correction.Text, correction.Edits);
+                chosen = preview?.Invoke(text, correction);
             }
             catch (Exception)
             {
                 return new WorkflowResult(WorkflowStatus.Failed, "The preview could not be shown. Nothing was changed.", text.Length, correction.Edits.Count, correction.Language);
             }
-            if (!accepted)
+            if (chosen == null || chosen == text)
                 return new WorkflowResult(WorkflowStatus.PreviewDeclined, "Canceled.", text.Length, correction.Edits.Count, correction.Language);
+            paste = chosen;
         }
 
         ClipboardArchive current;
@@ -244,7 +249,7 @@ public sealed class CorrectionWorkflow
 
         try
         {
-            ClipboardSession.WriteText(_clipboard, correction.Text, wait: _sleep);
+            ClipboardSession.WriteText(_clipboard, paste, wait: _sleep);
             _transport.Paste();
             _selected = false;
             Pause(request.PasteSettleMilliseconds);

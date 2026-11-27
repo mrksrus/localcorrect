@@ -42,9 +42,15 @@ public class LanguageToolEngineTests
     }
 
     static string Match(int offset, int length, string? replacement, string rule = "MORFOLOGIK_RULE_EN_US", string category = "TYPOS") =>
-        "{\"offset\":" + offset + ",\"length\":" + length + ",\"replacements\":"
-        + (replacement == null ? "[]" : "[{\"value\":" + System.Text.Json.JsonSerializer.Serialize(replacement) + "}]")
-        + ",\"rule\":{\"id\":\"" + rule + "\",\"category\":{\"id\":\"" + category + "\"}}}";
+        Suggest(offset, length, replacement == null ? Array.Empty<string>() : new[] { replacement }, rule, category);
+
+    static string Suggest(int offset, int length, string[] replacements, string rule = "MORFOLOGIK_RULE_EN_US", string category = "TYPOS") =>
+        "{\"offset\":" + offset + ",\"length\":" + length + ",\"replacements\":["
+        + string.Join(",", replacements.Select(r => "{\"value\":" + System.Text.Json.JsonSerializer.Serialize(r) + "}"))
+        + "],\"rule\":{\"id\":\"" + rule + "\",\"category\":{\"id\":\"" + category + "\"}}}";
+
+    static string Doubts(CorrectionResult result) =>
+        string.Join("; ", result.Doubts.Select(d => d.Offset + " " + d.Original + ": " + string.Join(",", d.Suggestions)));
 
     static string Matches(params string[] matches) => "{\"matches\":[" + string.Join(",", matches) + "]}";
 
@@ -154,6 +160,85 @@ public class LanguageToolEngineTests
         Assert.Equal("Receive it tomorrow.", Answer("Recieve it tommorow.", Matches(Match(0, 7, "Receive"), Match(11, 8, "tomorrow"))).Text);
     }
 
+    [Fact]
+    public void TwoLeadingCapitalsTakeTheCaseFixFromTheFirstThreeSuggestions()
+    {
+        const string text = "THe plan. We said HEllo to iPhoen and ABCd.";
+        var result = Answer(text, Matches(
+            Suggest(0, 3, new[] { "the", "Tie", "The", "Thee" }),
+            Suggest(18, 5, new[] { "Hello" }),
+            Suggest(27, 6, new[] { "iPhone" }),
+            Suggest(38, 4, new[] { "Abcd", "ABCD" })));
+        Assert.Equal("The plan. We said Hello to iPhoen and ABCd.", result.Text);
+        // Without the case fix among the first three, the word is a doubt; so are the other inner capitals.
+        Assert.Equal("27 iPhoen: iPhone; 38 ABCd: Abcd,ABCD", Doubts(result));
+        var fourth = Answer("THe plan.", Matches(Suggest(0, 3, new[] { "the", "Tie", "Thee", "The" })));
+        Assert.Equal("THe plan.", fourth.Text);
+        Assert.Equal("0 THe: the,Tie,Thee", Doubts(fourth));
+    }
+
+    [Fact]
+    public void TheFirstOfThreeSuggestionsThatPassesThePolicyIsApplied()
+    {
+        var result = Answer("I saw teh cat.", Matches(Suggest(6, 3, new[] { "tech-savvy", "the", "tea" })));
+        Assert.Equal("I saw the cat.", result.Text);
+        Assert.Empty(result.Doubts);
+        // A line break in the first suggestion of a grammar rule does not hide the second.
+        Assert.Equal("one two.", Answer("one  two.", Matches(Suggest(3, 2, new[] { "\n", " " }, "WHITESPACE_RULE", "TYPOS"))).Text);
+    }
+
+    [Fact]
+    public void LongWordsMayTakeThreeEdits()
+    {
+        // Nine letters or more: three edits are still a fix. Eight letters: a doubt.
+        var result = Answer("an acomodatin and a qwertzui", Matches(Suggest(3, 10, new[] { "accommodation" }), Suggest(20, 8, new[] { "qwertzabc" })));
+        Assert.Equal("an accommodation and a qwertzui", result.Text);
+        Assert.Equal("20 qwertzui: qwertzabc", Doubts(result));
+        Assert.Equal("Accommodation is booked.", Answer("Acomodatin is booked.", Matches(Suggest(0, 10, new[] { "Accommodation" }))).Text);
+        // The German capital inside a sentence keeps its limit of one.
+        const string german = "Wir buchen die Unterkumpft.";
+        Assert.Equal(german, Answer(german, Matches(Suggest(15, 11, new[] { "Unterkunft" }, "GERMAN_SPELLER_RULE")), "de").Text);
+    }
+
+    [Fact]
+    public void DoubtsAreWhatThePolicyHeldBack()
+    {
+        // Name policy, distance limit and a fragment's first word, each with its suggestions and its place in the text.
+        const string text = "the plan: ask Jonh to run kubectl.";
+        var result = Answer(text, Matches(
+            Suggest(0, 3, new[] { "The" }, "UPPERCASE_SENTENCE_START", "CASING"),
+            Suggest(14, 4, new[] { "John", "Jon", "Joan", "Jong" }),
+            Suggest(26, 7, new[] { "subject" })));
+        Assert.Equal(text, result.Text);
+        Assert.Empty(result.Edits);
+        Assert.Equal("0 the: The; 14 Jonh: John,Jon,Joan; 26 kubectl: subject", Doubts(result));
+        foreach (var doubt in result.Doubts) Assert.Equal(doubt.Original, text.Substring(doubt.Offset, doubt.Length));
+    }
+
+    [Fact]
+    public void NoDoubtForProtectedTextLineBreaksStyleOverlapsOrMissingSuggestions()
+    {
+        const string text = "Ask Jonh at www.exampel.com.\n> Quoted Jonh\nMeet Jonh and Brzenk Smithe or Kowalsky.";
+        int At(string word, int from = 0) => text.IndexOf(word, from, StringComparison.Ordinal);
+        var meet = At("Meet");
+        var result = Answer(text, Matches(
+            Suggest(At("Jonh"), 4, new[] { "John" }, category: "STYLE"),
+            Suggest(At("exampel"), 7, new[] { "example" }),
+            Suggest(At("Jonh", At(">")), 4, new[] { "John" }),
+            Suggest(At("Jonh", meet), 4, new[] { "John\n" }),
+            Suggest(meet - 1, 6, new[] { "Meet" }, "SOME_RULE", "GRAMMAR"),
+            Suggest(At("Brzenk"), 6, new[] { "Bank" }),
+            Suggest(At("Brzenk"), 13, new[] { "Brzenk Smith" }),
+            Suggest(At("Kowalsky"), 8, Array.Empty<string>())));
+        Assert.Equal("Brzenk: Bank", string.Join("; ", result.Doubts.Select(d => d.Original + ": " + string.Join(",", d.Suggestions))));
+        Assert.Empty(result.Edits);
+
+        // A doubt does not overlap an applied edit either.
+        var edited = Answer("I saw teh Jonh.", Matches(Suggest(6, 8, new[] { "the John" }, "X", "GRAMMAR"), Suggest(10, 4, new[] { "John" })));
+        Assert.Equal("I saw the John.", edited.Text);
+        Assert.Empty(edited.Doubts);
+    }
+
     [Theory]
     [InlineData(-1, 3)]
     [InlineData(12, 5)]
@@ -176,6 +261,7 @@ public class LanguageToolEngineTests
             Assert.Equal(SymSpellCorrector.EngineId, failed.Engine);
             Assert.Equal(LanguageToolEngine.FailedRequestNotice, failed.Notice);
             Assert.Equal("I saw the cat.", failed.Text);
+            Assert.Empty(failed.Doubts);
 
             fake.Check = _ => FakeLanguageTool.Json(Matches());
             fake.CheckDelay = TimeSpan.FromSeconds(5);

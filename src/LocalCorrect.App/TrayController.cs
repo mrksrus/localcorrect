@@ -128,11 +128,12 @@ internal sealed class TrayController : ApplicationContext
                 Preview = _settings.PreviewBeforeReplace,
                 Language = _settings.Language,
                 ExcludedProcesses = _settings.ExcludedProcesses
-            }, (original, corrected, edits) => PreviewForm.Ask(original, corrected, edits,
-                new PreviewDetails(timed.Last?.Language, timed.Last?.Engine, timed.Last?.Notice, _transport.SelectedParagraph)));
+            }, (original, correction) => PreviewForm.Ask(original, correction.Text, correction.Edits,
+                new PreviewDetails(correction.Language, correction.Engine, correction.Notice, _transport.SelectedParagraph), correction.Doubts));
             var category = result.Status is WorkflowStatus.Failed or WorkflowStatus.ClipboardBusy or WorkflowStatus.ClipboardTooLarge ? "error" : "info";
             FileLog.Write(_logPath, _settings.Logging, category,
                 result.Status + " chars=" + result.Characters.ToString() + " edits=" + result.Edits.ToString()
+                + " doubts=" + (timed.Last?.Doubts.Count ?? 0).ToString()
                 + " lang=" + (result.Language ?? "-") + " engine=" + (timed.Last?.Engine ?? _engine.Id)
                 + " ms=" + (timed.Milliseconds?.ToString() ?? "-") + " process=" + ProcessFilter.CoreName(target.ProcessName)
                 + " class=" + target.FocusClass);

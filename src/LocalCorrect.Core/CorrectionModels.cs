@@ -33,15 +33,40 @@ public sealed class CorrectionEdit
     }
 }
 
+/// <summary>
+/// A word the engine would change but is not sure enough to (W-11): shown in the preview with its suggestions and
+/// changed only when the user picks one. Offsets are in the original text.
+/// </summary>
+public sealed class CorrectionDoubt
+{
+    public CorrectionDoubt(int offset, int length, string original, IReadOnlyList<string> suggestions)
+    {
+        if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset));
+        if (length < 0) throw new ArgumentOutOfRangeException(nameof(length));
+        Offset = offset;
+        Length = length;
+        Original = original ?? throw new ArgumentNullException(nameof(original));
+        Suggestions = suggestions ?? throw new ArgumentNullException(nameof(suggestions));
+    }
+
+    public int Offset { get; }
+    public int Length { get; }
+    public string Original { get; }
+    /// <summary>Up to three, best first.</summary>
+    public IReadOnlyList<string> Suggestions { get; }
+}
+
 public sealed class CorrectionResult
 {
-    public CorrectionResult(string text, string language, IReadOnlyList<CorrectionEdit> edits, string engine = "", string? notice = null)
+    public CorrectionResult(string text, string language, IReadOnlyList<CorrectionEdit> edits, string engine = "", string? notice = null,
+        IReadOnlyList<CorrectionDoubt>? doubts = null)
     {
         Text = text ?? throw new ArgumentNullException(nameof(text));
         Language = language ?? throw new ArgumentNullException(nameof(language));
         Edits = edits ?? throw new ArgumentNullException(nameof(edits));
         Engine = engine ?? "";
         Notice = notice;
+        Doubts = doubts ?? Array.Empty<CorrectionDoubt>();
     }
 
     public string Text { get; }
@@ -53,6 +78,9 @@ public sealed class CorrectionResult
 
     /// <summary>Something the user should be told, such as "the word lists were used this time". Never contains the text.</summary>
     public string? Notice { get; }
+
+    /// <summary>What the engine left alone but may be wrong; only the preview shows these.</summary>
+    public IReadOnlyList<CorrectionDoubt> Doubts { get; }
 }
 
 /// <summary>
