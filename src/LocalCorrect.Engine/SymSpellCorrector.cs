@@ -136,9 +136,15 @@ public sealed class SymSpellCorrector : ICorrectionEngine
             var lowerTyped = Lower(typed);
             var contraction = code == "en" && Contractions.ContainsKey(lowerTyped);
             if ((typed.Length < 3 && !contraction) || TextPolicy.Overlaps(skip, start, end)) continue;
-            if (typed.Length > 1 && Upper.IsMatch(typed.Substring(1))) continue;
             if (typed.IndexOf('\'') >= 0 || typed.IndexOf('’') >= 0) continue;
             if (Valid(code, typed)) continue;
+            if (typed.Length > 1 && Upper.IsMatch(typed.Substring(1)))
+            {
+                // Any other capital inside the word looks like a name ("iPhone", "McDonald").
+                var fix = TextPolicy.TwoCapitalsFix(typed);
+                if (fix != null && Valid(code, fix)) edits.Add(new CorrectionEdit(start, typed.Length, typed, fix));
+                continue;
+            }
 
             var sentenceStart = TextPolicy.IsSentenceStart(text, start);
             var capitalised = typed[0] != char.ToLowerInvariant(typed[0]);

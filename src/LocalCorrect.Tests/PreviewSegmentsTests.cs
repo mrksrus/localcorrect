@@ -158,4 +158,65 @@ public class PreviewSegmentsTests
         Assert.Equal(0, PreviewSegments.CountChanges(segments));
         Assert.Empty(Build("", ""));
     }
+
+    // ---- Doubts (W-11) ----
+
+    const SegmentKind Doubt = SegmentKind.Doubt;
+
+    static CorrectionDoubt Unsure(string text, string word, params string[] suggestions) =>
+        new(text.IndexOf(word, StringComparison.Ordinal), word.Length, word, suggestions);
+
+    [Fact]
+    public void DoubtsAreShownInPlaceAndAChoiceBecomesAChange()
+    {
+        const string text = "Ask Jonh about teh plan, Smithe.";
+        var edits = new[] { Edit(text, "teh", "the") };
+        var corrected = CorrectionEdit.Apply(text, edits);
+        var doubts = new[] { Unsure(text, "Jonh", "John", "Jon"), Unsure(text, "Smithe", "Smith") };
+
+        var open = PreviewSegments.Build(text, corrected, edits, doubts);
+        Assert.Equal(new PreviewSegment[]
+        {
+            new(Same, "Ask "), new(Doubt, "Jonh", 0), new(Same, " about "), new(Removed, "teh"), new(Inserted, "the"),
+            new(Same, " plan, "), new(Doubt, "Smithe", 1), new(Same, ".")
+        }, open);
+        Assert.Equal(1, PreviewSegments.CountChanges(open));
+        Assert.Equal(2, PreviewSegments.CountDoubts(open));
+        Assert.Equal(corrected, PreviewSegments.Compose(text, corrected, edits, doubts, new string?[2]));
+
+        var choices = new string?[] { "Jon", null };
+        var chosen = PreviewSegments.Build(text, corrected, edits, doubts, choices);
+        Assert.Equal(new PreviewSegment[] { new(Same, "Ask "), new(Removed, "Jonh", 0), new(Inserted, "Jon", 0), new(Same, " about ") }, chosen.Take(4));
+        Assert.Equal(2, PreviewSegments.CountChanges(chosen));
+        Assert.Equal(1, PreviewSegments.CountDoubts(chosen));
+        Assert.Equal("Ask Jon about the plan, Smithe.", PreviewSegments.Compose(text, corrected, edits, doubts, choices));
+        Assert.Equal("Ask Jon about the plan, Smith.", PreviewSegments.Compose(text, corrected, edits, doubts, new[] { "Jon", "Smith" }));
+        // Only a suggestion of that doubt is pasted.
+        Assert.Equal(corrected, PreviewSegments.Compose(text, corrected, edits, doubts, new[] { "Jo hn", "x" }));
+    }
+
+    [Fact]
+    public void DoubtsThatDoNotFitTheTextAreDropped()
+    {
+        const string text = "Ask Jonh about teh plan.";
+        var edits = new[] { Edit(text, "teh", "the") };
+        var corrected = CorrectionEdit.Apply(text, edits);
+        var doubts = new[]
+        {
+            new CorrectionDoubt(4, 4, "John", new[] { "x" }),          // not the text at that place
+            new CorrectionDoubt(14, 5, " teh ", new[] { "x" }),       // overlaps the edit
+            new CorrectionDoubt(20, 9, "plan.", new[] { "x" }),       // past the end
+            new CorrectionDoubt(4, 4, "Jonh", Array.Empty<string>()), // nothing to offer
+            new CorrectionDoubt(4, 4, "Jonh", new[] { "John" }),
+            new CorrectionDoubt(5, 2, "on", new[] { "an" })           // overlaps the doubt before
+        };
+        var segments = PreviewSegments.Build(text, corrected, edits, doubts);
+        Assert.Equal(new[] { 4 }, segments.Where(s => s.Kind == Doubt).Select(s => s.Doubt));
+        Assert.Equal("Ask John about the plan.", PreviewSegments.Compose(text, corrected, edits, doubts, new[] { "x", "x", "x", null, "John", "an" }));
+
+        // Edits that do not add up to the corrected text (the local model) show no doubts at all.
+        var rewrite = new[] { new CorrectionEdit(0, 3, "Ask", "Tell") };
+        Assert.DoesNotContain(PreviewSegments.Build(text, "Tell Jonh about the plan.", rewrite, doubts), s => s.Kind == Doubt);
+        Assert.Equal("Tell Jonh about the plan.", PreviewSegments.Compose(text, "Tell Jonh about the plan.", rewrite, doubts, new[] { null, null, null, null, "John", null }));
+    }
 }

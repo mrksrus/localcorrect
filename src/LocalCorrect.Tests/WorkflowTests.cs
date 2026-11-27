@@ -203,7 +203,7 @@ public class WorkflowTests
     {
         var (clip, transport, _, workflow) = Harness();
         transport.Selection = "teh cat";
-        var result = workflow.Run(Request(preview: true), (_, _, _) => false);
+        var result = workflow.Run(Request(preview: true), (_, _) => null);
         Assert.Equal(WorkflowStatus.PreviewDeclined, result.Status);
         Assert.Empty(transport.Pasted);
         AssertClipboardRestored(clip);
@@ -225,7 +225,7 @@ public class WorkflowTests
         var (_, transport, _, workflow) = Harness();
         transport.Selection = "teh cat";
         var asked = false;
-        var result = workflow.Run(Request(), (_, _, _) => { asked = true; return false; });
+        var result = workflow.Run(Request(), (_, _) => { asked = true; return null; });
         Assert.Equal(WorkflowStatus.Replaced, result.Status);
         Assert.False(asked);
         Assert.Equal(new[] { "the cat" }, transport.Pasted);
@@ -297,15 +297,72 @@ public class WorkflowTests
         var (_, transport, _, workflow) = Harness();
         transport.Selection = "teh cat";
         string? seen = null;
-        var result = workflow.Run(Request(preview: true), (original, corrected, edits) =>
+        var result = workflow.Run(Request(preview: true), (original, correction) =>
         {
-            seen = original + "=>" + corrected;
-            Assert.NotEmpty(edits);
-            return true;
+            seen = original + "=>" + correction.Text;
+            Assert.NotEmpty(correction.Edits);
+            return correction.Text;
         });
         Assert.Equal(WorkflowStatus.Replaced, result.Status);
         Assert.Equal("teh cat=>the cat", seen);
         Assert.Equal(new[] { "the cat" }, transport.Pasted);
+    }
+
+    static CorrectionResult Unsure(string text) => new(text, "en", Array.Empty<CorrectionEdit>(),
+        doubts: new[] { new CorrectionDoubt(text.IndexOf("Jonh", StringComparison.Ordinal), 4, "Jonh", new[] { "John" }) });
+
+    [Fact]
+    public void DoubtsAloneOpenThePreviewAndNothingChosenPastesNothing()
+    {
+        var (clip, transport, engine, workflow) = Harness();
+        transport.Selection = "ask Jonh";
+        engine.Handle = Unsure;
+        CorrectionResult? shown = null;
+        var result = workflow.Run(Request(preview: true), (original, correction) =>
+        {
+            shown = correction;
+            return original; // Replace stays disabled, so the window can only give back the text as it was
+        });
+        Assert.Equal(WorkflowStatus.PreviewDeclined, result.Status);
+        Assert.Single(shown!.Doubts);
+        Assert.Empty(transport.Pasted);
+        AssertClipboardRestored(clip);
+        Assert.Equal(WorkflowStatus.PreviewDeclined, workflow.Run(Request(preview: true), (_, _) => null).Status);
+        Assert.Empty(transport.Pasted);
+        AssertClipboardRestored(clip);
+    }
+
+    [Fact]
+    public void AChosenSuggestionIsPasted()
+    {
+        var (clip, transport, engine, workflow) = Harness();
+        transport.Selection = "ask Jonh";
+        engine.Handle = Unsure;
+        var result = workflow.Run(Request(preview: true), (original, correction) =>
+            PreviewSegments.Compose(original, correction.Text, correction.Edits, correction.Doubts, new[] { "John" }));
+        Assert.Equal(WorkflowStatus.Replaced, result.Status);
+        Assert.Equal(new[] { "ask John" }, transport.Pasted);
+        AssertClipboardRestored(clip);
+    }
+
+    [Fact]
+    public void WithThePreviewOffDoubtsAreIgnored()
+    {
+        var (clip, transport, engine, workflow) = Harness();
+        transport.Selection = "ask Jonh";
+        engine.Handle = Unsure;
+        var asked = false;
+        Assert.Equal(WorkflowStatus.Unchanged, workflow.Run(Request(), (_, _) => { asked = true; return "x"; }).Status);
+        Assert.False(asked);
+        Assert.Empty(transport.Pasted);
+        AssertClipboardRestored(clip);
+
+        // With an edit as well, the edit alone is pasted.
+        transport.Selection = "teh Jonh";
+        engine.Handle = text => new CorrectionResult("the Jonh", "en", new[] { new CorrectionEdit(0, 3, "teh", "the") },
+            doubts: new[] { new CorrectionDoubt(4, 4, "Jonh", new[] { "John" }) });
+        Assert.Equal(WorkflowStatus.Replaced, workflow.Run(Request()).Status);
+        Assert.Equal(new[] { "the Jonh" }, transport.Pasted);
     }
 
     // ---- Nothing selected: the current paragraph (W-05, W-09) ----
@@ -418,7 +475,7 @@ public class WorkflowTests
         var text = outcome == "unchanged" ? "One.\r\nNo typos here.\r\nTwo." : "One.\r\nA teh typo.\r\nTwo.";
         Caret(editor, text, 8);
         if (outcome == "failed") engine.Handle = _ => throw new LocalEngineException("Engine down. Nothing was changed.");
-        var result = workflow.Run(Request(preview: outcome == "declined"), (_, _, _) => false);
+        var result = workflow.Run(Request(preview: outcome == "declined"), (_, _) => null);
         var expected = outcome switch { "unchanged" => WorkflowStatus.Unchanged, "declined" => WorkflowStatus.PreviewDeclined, _ => WorkflowStatus.Failed };
         Assert.Equal(expected, result.Status);
         Assert.Empty(editor.Pasted);
@@ -456,7 +513,7 @@ public class WorkflowTests
         editor.Anchor = 0;
         editor.Caret = 9;
         editor.FirstCopyDelay = editor.CopyCost = copyCost;
-        var result = workflow.Run(Request(preview: true), (original, _, _) => original == "Alpha teh");
+        var result = workflow.Run(Request(preview: true), (original, correction) => original == "Alpha teh" ? correction.Text : null);
         Assert.Equal(WorkflowStatus.Replaced, result.Status);
         Assert.Empty(editor.Keys);
         Assert.Equal("Alpha the beta gamma.\r\nNext", editor.Text);

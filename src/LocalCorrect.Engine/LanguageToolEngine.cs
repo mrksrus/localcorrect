@@ -52,7 +52,7 @@ public sealed class LanguageToolEngine : ICorrectionEngine
             return Fallback(text, code, first ? StartingNotice : null);
         }
 
-        List<CorrectionEdit>? edits;
+        (List<CorrectionEdit> Edits, List<CorrectionDoubt> Doubts)? found;
         try
         {
             using var cancel = new CancellationTokenSource(RequestTimeout);
@@ -64,14 +64,14 @@ public sealed class LanguageToolEngine : ICorrectionEngine
             response.EnsureSuccessStatusCode();
             using var stream = response.Content.ReadAsStream(cancel.Token);
             using var document = JsonDocument.Parse(stream);
-            edits = Edits(text, code, document.RootElement);
+            found = Edits(text, code, document.RootElement);
         }
         catch (Exception)
         {
-            edits = null;
+            found = null;
         }
-        if (edits == null) return Fallback(text, code, FailedRequestNotice);
-        return new CorrectionResult(CorrectionEdit.Apply(text, edits), code, edits, EngineId);
+        if (found is not var (edits, doubts)) return Fallback(text, code, FailedRequestNotice);
+        return new CorrectionResult(CorrectionEdit.Apply(text, edits), code, edits, EngineId, doubts: doubts);
     }
 
     CorrectionResult Fallback(string text, string code, string? notice)
@@ -80,21 +80,27 @@ public sealed class LanguageToolEngine : ICorrectionEngine
         return new CorrectionResult(result.Text, result.Language, result.Edits, result.Engine, notice);
     }
 
-    /// <summary>The accepted edits, or null when the response does not fit the text (then nothing of it is trusted).</summary>
-    List<CorrectionEdit>? Edits(string text, string code, JsonElement root)
+    /// <summary>
+    /// The accepted edits and the doubts (W-11), or null when the response does not fit the text (then nothing of it
+    /// is trusted). A doubt is a match the name policy, the distance limit or the fragment-start rule held back.
+    /// </summary>
+    (List<CorrectionEdit> Edits, List<CorrectionDoubt> Doubts)? Edits(string text, string code, JsonElement root)
     {
-        var matches = new List<(int Offset, int Length, string Rule, string Category, string? Replacement)>();
+        var matches = new List<(int Offset, int Length, string Rule, string Category, List<string> Replacements)>();
         foreach (var match in root.GetProperty("matches").EnumerateArray())
         {
             var offset = match.GetProperty("offset").GetInt32();
             var length = match.GetProperty("length").GetInt32();
             if (offset < 0 || length < 0 || offset > text.Length - length) return null;
             var rule = match.GetProperty("rule");
-            string? replacement = null;
-            if (match.TryGetProperty("replacements", out var list) && list.ValueKind == JsonValueKind.Array && list.GetArrayLength() > 0
-                && list[0].TryGetProperty("value", out var value) && value.ValueKind == JsonValueKind.String)
-                replacement = value.GetString();
-            matches.Add((offset, length, rule.GetProperty("id").GetString() ?? "", rule.GetProperty("category").GetProperty("id").GetString() ?? "", replacement));
+            var replacements = new List<string>();
+            if (match.TryGetProperty("replacements", out var list) && list.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in list.EnumerateArray().Take(3))
+                    if (item.TryGetProperty("value", out var value) && value.ValueKind == JsonValueKind.String)
+                        replacements.Add(value.GetString()!);
+            }
+            matches.Add((offset, length, rule.GetProperty("id").GetString() ?? "", rule.GetProperty("category").GetProperty("id").GetString() ?? "", replacements));
         }
 
         List<(int Start, int End)> protectedRanges;
@@ -107,22 +113,31 @@ public sealed class LanguageToolEngine : ICorrectionEngine
             return null;
         }
         var edits = new List<CorrectionEdit>();
+        var doubts = new List<CorrectionDoubt>();
         var end = 0;
         foreach (var match in matches.OrderBy(match => match.Offset))
         {
             var original = text.Substring(match.Offset, match.Length);
-            var replacement = match.Replacement;
-            if (original.Length == 0 || string.IsNullOrEmpty(replacement) || replacement == original) continue;
-            if (replacement.IndexOfAny(LineBreaks) >= 0 || original.IndexOfAny(LineBreaks) >= 0) continue;
+            var candidates = match.Replacements.Where(r => r.Length > 0 && r != original && r.IndexOfAny(LineBreaks) < 0).ToList();
+            if (original.Length == 0 || candidates.Count == 0 || original.IndexOfAny(LineBreaks) >= 0) continue;
             if (!Applied.Contains(match.Category)) continue;
             if (match.Offset < end || TextPolicy.Overlaps(protectedRanges, match.Offset, match.Offset + match.Length)) continue;
-            // The text may be a fragment that starts in the middle of a sentence.
-            if (match.Rule == "UPPERCASE_SENTENCE_START" && text.AsSpan(0, match.Offset).IsWhiteSpace()) continue;
-            if (IsSpeller(match.Rule) && LooksLikeName(text, code, match.Offset, original, replacement)) continue;
-            edits.Add(new CorrectionEdit(match.Offset, match.Length, original, replacement));
             end = match.Offset + match.Length;
+            string? replacement;
+            // The text may be a fragment that starts in the middle of a sentence.
+            if (match.Rule == "UPPERCASE_SENTENCE_START" && text.AsSpan(0, match.Offset).IsWhiteSpace()) replacement = null;
+            else if (!IsSpeller(match.Rule)) replacement = candidates[0];
+            else
+            {
+                var caseFix = TextPolicy.TwoCapitalsFix(original);
+                replacement = caseFix != null && candidates.Contains(caseFix)
+                    ? caseFix
+                    : candidates.FirstOrDefault(candidate => !LooksLikeName(text, code, match.Offset, original, candidate));
+            }
+            if (replacement != null) edits.Add(new CorrectionEdit(match.Offset, match.Length, original, replacement));
+            else doubts.Add(new CorrectionDoubt(match.Offset, match.Length, original, candidates));
         }
-        return edits;
+        return (edits, doubts);
     }
 
     static bool IsSpeller(string rule) => rule == "GERMAN_SPELLER_RULE" || rule.StartsWith("MORFOLOGIK_RULE_", StringComparison.Ordinal);
@@ -134,9 +149,11 @@ public sealed class LanguageToolEngine : ICorrectionEngine
         if (_wordLists.IsKnown(word)) return true;
         var distance = Distance(Squash(word), Squash(suggestion));
         // A far-off suggestion is a guess (a name, a tool, a word the speller lacks), not a typo fix.
-        if (!char.IsUpper(word[0])) return distance > 2;
+        // A word of nine letters or more may hold three slips and still be a typo, not a guess.
+        var limit = word.Count(char.IsLetter) >= 9 ? 3 : 2;
+        if (!char.IsUpper(word[0])) return distance > limit;
         if (TextPolicy.FollowsTitle(text, start)) return true;
-        if (TextPolicy.IsSentenceStart(text, start)) return distance > 2;
+        if (TextPolicy.IsSentenceStart(text, start)) return distance > limit;
         // English: a capital inside a sentence is a name. German nouns are capitalised, so only a close fix applies.
         return code == "en" || distance > 1;
     }

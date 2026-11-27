@@ -38,6 +38,19 @@ public static class TextPolicy
 
     public static bool FollowsTitle(string text, int start) => Titles.IsMatch(Before(text, start));
 
+    /// <summary>
+    /// "THe", "HEllo", "DAnke": two capitals and then only lowercase letters is a slip on the shift key, so the form
+    /// with the second letter lowered is returned. Null for anything else, including plurals of acronyms ("IDs", "PCs").
+    /// </summary>
+    public static string? TwoCapitalsFix(string word)
+    {
+        if (word.Length < 3 || !char.IsUpper(word[0]) || !char.IsUpper(word[1])) return null;
+        for (var i = 2; i < word.Length; i++)
+            if (!char.IsLower(word[i])) return null;
+        if (word.Length == 3 && word[2] == 's') return null;
+        return word[0] + char.ToLowerInvariant(word[1]).ToString() + word.Substring(2);
+    }
+
     static string Before(string text, int start)
     {
         var from = Math.Max(0, start - 40);
