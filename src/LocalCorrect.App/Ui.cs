@@ -38,6 +38,9 @@ internal static class Ui
     public static Color InsertedText => PlainMarks ? SystemColors.WindowText : Color.FromArgb(0x0B, 0x5A, 0x0B);
     public static Color InsertedBack => PlainMarks ? SystemColors.Window : Color.FromArgb(0xE2, 0xF3, 0xE0);
     public static FontStyle InsertedStyle => PlainMarks ? FontStyle.Underline | FontStyle.Bold : FontStyle.Underline;
+    // A doubt is blue with a wavy underline in the text colour; in high contrast the system's link colour.
+    public static Color UnsureText => PlainMarks ? SystemColors.HotTrack : Color.FromArgb(0x0B, 0x4A, 0x9E);
+    public static Color UnsureBack => PlainMarks ? SystemColors.Window : Color.FromArgb(0xE3, 0xEE, 0xFB);
 
     public static Label Label(string text, float size = 1f, FontStyle style = FontStyle.Regular, bool muted = false, int wrapAt = 0) => new()
     {

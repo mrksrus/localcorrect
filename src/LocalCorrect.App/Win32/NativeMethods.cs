@@ -18,6 +18,16 @@ internal static class NativeMethods
     public const int SwRestore = 9;
     public const int JobObjectExtendedLimitInformation = 9;
     public const uint JobObjectLimitKillOnJobClose = 0x2000;
+    public const int EmSetCharFormat = 0x0444;
+    public const nint ScfSelection = 0x0001;
+    public const uint CfmUnderline = 0x00000004;
+    public const uint CfmUnderlineType = 0x00800000;
+    public const uint CfeUnderline = 0x00000004;
+    public const byte CfuUnderline = 1;
+    public const byte CfuUnderlineWave = 8;
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    public static extern nint SendMessage(nint hWnd, int message, nint wParam, ref CHARFORMAT2W format);
 
     [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
     public static extern nint CreateJobObject(nint attributes, string? name);
@@ -143,6 +153,32 @@ internal struct GUITHREADINFO
     public nint hwndMoveSize;
     public nint hwndCaret;
     public RECT rcCaret;
+}
+
+/// <summary>The rich edit character format; only the underline fields are used.</summary>
+[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+internal struct CHARFORMAT2W
+{
+    public int cbSize;
+    public uint dwMask;
+    public uint dwEffects;
+    public int yHeight;
+    public int yOffset;
+    public int crTextColor;
+    public byte bCharSet;
+    public byte bPitchAndFamily;
+    [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string szFaceName;
+    public short wWeight;
+    public short sSpacing;
+    public int crBackColor;
+    public int lcid;
+    public int dwReserved;
+    public short sStyle;
+    public short wKerning;
+    public byte bUnderlineType;
+    public byte bAnimation;
+    public byte bRevAuthor;
+    public byte bUnderlineColor;
 }
 
 [StructLayout(LayoutKind.Sequential)]

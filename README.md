@@ -4,7 +4,7 @@ LocalCorrect is a per-user Windows tray app that corrects English and German spe
 
 This replaces the separate Outlook add-in and browser extension with one program. It does not install into Outlook.
 
-**Version 0.2.0-alpha.1.** The release zip also contains [LanguageTool](https://languagetool.org) 6.6 and a Java runtime, which run on this computer only (see [Credits and licences](#credits-and-licences)). LocalCorrect uses LanguageTool by default: it fixes spelling, capitalisation, grammar, punctuation and commonly confused words (`das` / `dass`, `Its` / `It's`), and leaves style suggestions alone. The built-in word lists, the same corrector as [LocalCorrect for Firefox](https://github.com/mrksrus/localcorrect-browser) version 2 and [LocalCorrect for Outlook](https://github.com/mrksrus/localcorrect-outlook), are the instant fallback: they fix typos only.
+**Version 0.3.0-alpha.1.** The release zip also contains [LanguageTool](https://languagetool.org) 6.6 and a Java runtime, which run on this computer only (see [Credits and licences](#credits-and-licences)). LocalCorrect uses LanguageTool by default: it fixes spelling, capitalisation, grammar, punctuation and commonly confused words (`das` / `dass`, `Its` / `It's`), and leaves style suggestions alone. The built-in word lists, the same corrector as [LocalCorrect for Firefox](https://github.com/mrksrus/localcorrect-browser) version 2 and [LocalCorrect for Outlook](https://github.com/mrksrus/localcorrect-outlook), are the instant fallback: they fix typos only.
 
 ## Privacy
 
@@ -20,7 +20,7 @@ Windows 10 or Windows 11, 64-bit. No administrator account. The published progra
 
 The zip is about 210 MB and takes about 280 MB once installed, most of it LanguageTool (about 155 MB) and its Java runtime (about 45 MB). While LanguageTool runs it uses about 1 GB of memory.
 
-1. Download `LocalCorrect-0.2.0-alpha.1-win-x64.zip` from the [releases](https://github.com/mrksrus/localcorrect/releases) page and unzip it.
+1. Download `LocalCorrect-0.3.0-alpha.1-win-x64.zip` from the [releases](https://github.com/mrksrus/localcorrect/releases) page and unzip it.
 2. The program is unsigned, so SmartScreen may say it is unrecognized. Choose **More info**, then **Run anyway**.
 3. Double-click `install.cmd`. That copies LocalCorrect to `%LOCALAPPDATA%\LocalCorrect\app` and adds a Start menu shortcut. Installing over an older version replaces the `languagetool`, `jre` and `licenses` folders completely. You can also run `LocalCorrect.exe --install`.
 4. A tray icon appears. Right-click it for the current state, settings, pause, the log, the licences, and exit.
@@ -35,11 +35,13 @@ Click in the text field first so the caret is there. Select the words you want f
 
 A small window shows your text with the changes in place: removed words are struck through and what replaces them is underlined. Above it you see how many changes there are, the language, and what checked the text. **Replace** or Enter pastes the corrected text over the selection. **Cancel** or Esc leaves the text alone. A long text scrolls and starts at its first change. You can turn that preview off.
 
+Words LanguageTool flags but LocalCorrect is not sure enough to change are blue with a wavy underline ("2 changes, 1 unsure"). Click one, or press F8 to go to the next, and pick a suggestion or **Keep as typed**; a picked suggestion then shows as an ordinary change, and clicking it again undoes it. Nothing unsure is pasted unless you pick it. When the text has only unsure words, the window still opens, and **Replace** stays off until you pick something. With the preview turned off, unsure words are left as typed.
+
 The previous clipboard contents are put back afterwards, including formats that are not plain text when Windows exposes them as memory (HTML, RTF, PNG, and similar). A bitmap held only as a GDI handle cannot be snapshotted and is skipped.
 
 ### LanguageTool (default)
 
-LanguageTool checks English as US English and German as German German; the language is detected per text, or forced in settings. Only spelling, capitalisation, grammar, punctuation and confused-word fixes are applied, always the first suggestion. A suggestion is skipped when it would change a link, an e-mail address, code, a quoted `>` line, a name or a word that is valid in the other language, or the first word of the selection (it may start in the middle of a sentence).
+LanguageTool checks English as US English and German as German German; the language is detected per text, or forced in settings. Only spelling, capitalisation, grammar, punctuation and confused-word fixes are applied: the first of LanguageTool's first three suggestions that passes the rules below. Links, e-mail addresses, code and quoted `>` lines are never changed. A spelling suggestion is held back when the word looks like a name or is valid in the other language, or when the suggestion is too far from what was typed (more than two edits, or three for a word of nine letters or more); so is a capital at the first word of the selection, which may start in the middle of a sentence. Held-back suggestions are shown as unsure words in the preview. A word with two capitals and then lowercase letters (`THe`, `HEllo`, `DAnke`) is a slip on the shift key and is fixed when LanguageTool flags it and suggests the word with the second letter lowered; `IDs`, `PCs`, `iPhone` and `McDonald` stay.
 
 LanguageTool needs a minute or so after LocalCorrect starts before it is ready; the tray menu shows its state. Until then, and whenever it fails, does not answer within 10 seconds, or is not installed, the built-in word lists correct the text at once and the tray tells you. If the server stops it is restarted once; if it stops again within a minute the word lists are used until you change a setting or restart LocalCorrect. To save the memory, choose **Built-in word lists only** in settings; LanguageTool is then stopped.
 
@@ -50,6 +52,7 @@ What they change, from the same cases as the Firefox version:
 - `recieve` → `receive`, `teh` → `the`, `Dnak` → `Dank`
 - `fur` → `für`, `ueber` → `über`, `gross` → `groß`
 - `haus` → `Haus`, `dont` → `don't`, a lone `i` → `I`
+- `THe` → `The`, `PRoblem` → `Problem` (two capitals and then lowercase letters)
 
 What it leaves alone: names, links, e-mail addresses, code, file names, numbers, acronyms, command-line flags, and quoted lines that start with `>`. A word that is valid in the other language stays (`Meeting` in a German sentence). It does not correct a real word used in the wrong place (`there` / `their`). When two fixes are equally likely it picks the more common word.
 

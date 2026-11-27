@@ -14,6 +14,7 @@ Earlier decisions LC-01 to LC-13 live in the Outlook add-in (`mrksrus/localcorre
 - W-08, 2026-11-17. The source archives of the bundled GPL and LGPL components (LanguageTool, Java runtime) are uploaded to a third-party-sources release in this repository and linked from THIRD_PARTY.md. No written offer; nothing added to the app zip.
 - W-09, 2026-11-17. With nothing selected, a paragraph that contains links, images, tables or inline formatting is not replaced; the app asks for a selection.
 - W-10, 2026-11-17. The hotkey does nothing in terminals, code editors and Excel (no copy, no paste, only a tray message), so it cannot interrupt a command, paste a line at the caret or overwrite a cell or formula.
+- W-11, 2026-11-27. What the engine is unsure about is shown, not hidden: the preview marks such words in blue and offers the suggestions; nothing unsure is applied without the user choosing it. A system-wide underline overlay is a possible later experiment, not decided.
 
 ## Observed implementation
 
@@ -25,6 +26,11 @@ Earlier decisions LC-01 to LC-13 live in the Outlook add-in (`mrksrus/localcorre
 - No selection: after a 1.2 s first-copy wait, `NoSelectionPolicy` keys select the paragraph (or line); formatted paragraphs are refused; `ProcessFilter.NeverCorrect` is the W-10 list.
 - UI: the preview shows the text with changes in place (struck through / underlined); settings are two columns of sections that scroll when they do not fit above the taskbar; system font and colours, sizes in font heights.
 - Third-party sources: `third-party-sources` release (W-08) with LanguageTool, Temurin, Hunspell/hunspell-java and the copyleft Maven jars' sources.
+
+0.3.0-alpha.1:
+- Engines: two capitals and then lowercase (`THe`) are fixed when LanguageTool suggests the form with the second letter lowered (word lists: when that form is valid); plurals of acronyms (`IDs`) excluded; the first of the first three suggestions that passes the policy is applied; lowercase and sentence-start speller fixes may be three edits away for words of nine letters or more.
+- Doubts: `CorrectionResult.Doubts` (LanguageTool only) for matches held back by the name policy, the distance limit or the fragment-start rule; `PreviewSegments.Compose` builds the pasted text from the edits and the picked suggestions; the preview delegate returns the text to paste or null.
+- UI: doubts in blue with a wavy underline (rich edit `CFU_UNDERLINEWAVE` in the text colour), hand cursor, menu with up to three suggestions and "Keep as typed", F8 for the next doubt; heading "N changes, M unsure"; Replace off with nothing to paste.
 
 ## Open decisions
 

@@ -33,7 +33,23 @@ public class WindowScreenshotTests
             var german = Edits(German, pairs);
             Capture(new PreviewForm(German, CorrectionEdit.Apply(German, german), german,
                 new PreviewDetails("de", LanguageToolEngine.EngineId, null, Paragraph: true)), "preview-german-paragraph-" + tag);
+
+            // Unsure words (W-11): blue with a wavy underline, next to an ordinary change.
+            const string unsure = "THe team will ask Jonh to run kubectl before the meeting.";
+            var fixedCase = Edits(unsure, ("THe", "The"));
+            var doubts = new[] { Doubt(unsure, "Jonh", "John", "Jon", "Joan"), Doubt(unsure, "kubectl", "subject") };
+            Capture(new PreviewForm(unsure, CorrectionEdit.Apply(unsure, fixedCase), fixedCase,
+                new PreviewDetails("en", LanguageToolEngine.EngineId), doubts), "preview-unsure-" + tag);
             if (plainMarks) return; // the marks are the only difference
+
+            // Only doubts: nothing to paste until a suggestion is picked.
+            var onlyDoubts = new PreviewForm(unsure, unsure, Array.Empty<CorrectionEdit>(), new PreviewDetails("en", LanguageToolEngine.EngineId), doubts);
+            Capture(onlyDoubts, "preview-only-unsure-" + tag, () =>
+            {
+                Assert.False(Find<Button>(onlyDoubts, "Replace").Enabled, "Replace should be off with nothing to paste");
+                Assert.Equal(unsure, onlyDoubts.Result);
+                Find<Label>(onlyDoubts, "2 unsure in the selection");
+            });
 
             var english = Edits(English, ("i", "I"), ("recieve", "receive"), ("tommorow", "tomorrow"));
             Capture(new PreviewForm(English, CorrectionEdit.Apply(English, english), english,
@@ -87,6 +103,21 @@ public class WindowScreenshotTests
             Ui.Scale = 1f;
         }
     });
+
+    static CorrectionDoubt Doubt(string text, string word, params string[] suggestions) =>
+        new(text.IndexOf(word, StringComparison.Ordinal), word.Length, word, suggestions);
+
+    static T Find<T>(Control parent, string text) where T : Control =>
+        FindAll<T>(parent).FirstOrDefault(control => control.Text == text) ?? throw new Xunit.Sdk.XunitException("no " + typeof(T).Name + " \"" + text + "\"");
+
+    static IEnumerable<T> FindAll<T>(Control parent) where T : Control
+    {
+        foreach (Control child in parent.Controls)
+        {
+            if (child is T match) yield return match;
+            foreach (var inner in FindAll<T>(child)) yield return inner;
+        }
+    }
 
     /// <summary>One edit per pair, at the first whole-word place after the previous one.</summary>
     static CorrectionEdit[] Edits(string text, params (string Wrong, string Right)[] pairs)
